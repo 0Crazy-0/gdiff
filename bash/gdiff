@@ -88,6 +88,12 @@ resolve_rule() {
         return
     fi
 
+    # if running from the development repository, prioritize repo's share/rule.txt
+    if [ -e "$SCRIPT_DIR/../.git" ] && [ -f "$SCRIPT_DIR/../share/rule.txt" ]; then
+        echo "$SCRIPT_DIR/../share/rule.txt"
+        return
+    fi
+
     if [ -f "$USER_RULE_TXT" ]; then
         echo "$USER_RULE_TXT"
         return
