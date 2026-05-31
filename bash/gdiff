@@ -160,8 +160,8 @@ main() {
                 exit 0
                 ;;
             *)
-                echo -e "${RED}Unknown option:${RESET} '$1'"
-                echo "  Run 'gdiff --help' for a list of valid options."
+                echo -e "${RED}Unknown option:${RESET} '$1'" >&2
+                echo "  Run 'gdiff --help' for a list of valid options." >&2
                 exit 1
                 ;;
         esac
