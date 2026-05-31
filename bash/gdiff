@@ -1,0 +1,227 @@
+#!/usr/bin/env bash
+
+VERSION="1.0.0"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+DEFAULT_RULE="/usr/share/gdiff/rule.txt"
+if [ ! -f "$DEFAULT_RULE" ] && [ -f "$SCRIPT_DIR/../share/rule.txt" ]; then
+    DEFAULT_RULE="$SCRIPT_DIR/../share/rule.txt"
+fi
+USER_RULE_TXT="${XDG_CONFIG_HOME:-$HOME/.config}/gdiff/rule.txt"
+USER_RULE_MD="${XDG_CONFIG_HOME:-$HOME/.config}/gdiff/rule.md"
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+detect_clipboard() {
+    if command -v wl-copy &>/dev/null && [ -n "$WAYLAND_DISPLAY" ]; then
+        echo "wl-copy"
+    elif command -v xclip &>/dev/null && [ -n "$DISPLAY" ]; then
+        echo "xclip -selection clipboard"
+    elif command -v xsel &>/dev/null && [ -n "$DISPLAY" ]; then
+        echo "xsel --clipboard --input"
+    elif command -v pbcopy &>/dev/null; then
+        echo "pbcopy"
+    elif command -v clip.exe &>/dev/null; then
+        echo "clip.exe"
+    else
+        echo ""
+    fi
+}
+
+
+show_help() {
+    echo -e "${BOLD}USAGE${RESET}"
+    echo "  gdiff [OPTIONS]"
+    echo ""
+    echo -e "${BOLD}OPTIONS${RESET}"
+    echo "  -r, --rule <file>   Use a custom rule file (.txt or .md)"
+    echo "  -p, --print         Print the output instead of copying to clipboard"
+    echo "  --restore-rule      Restore default rule to ~/.config/gdiff/rule.txt"
+    echo "  --rule-path         Show which rule file is being used"
+    echo "  -v, --version       Show version"
+    echo "  -h, --help          Show this help"
+    echo ""
+    echo -e "${BOLD}RULE PRECEDENCE${RESET}"
+    echo "  1. --rule <file>                 (highest)"
+    echo "  2. ~/.config/gdiff/rule.txt"
+    echo "  3. /usr/share/gdiff/rule.txt     (default)"
+}
+
+do_restore_rule() {
+    local config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/gdiff"
+    local config_file="$config_dir/rule.txt"
+
+    if [ ! -f "$DEFAULT_RULE" ]; then
+        echo -e "${RED}Error:${RESET} Default rule not found at $DEFAULT_RULE" >&2
+        return 1
+    fi
+
+    if [ -f "$config_file" ]; then
+        echo -n -e "${RED}Warning:${RESET} A rule file already exists at $config_file. Overwrite? (y/N): "
+        read -r response
+        case "$response" in
+            [yY][eE][sS]|[yY])
+                ;;
+            *)
+                echo "Operation cancelled."
+                return 0
+                ;;
+        esac
+    fi
+
+    mkdir -p "$config_dir"
+    cp "$DEFAULT_RULE" "$config_file"
+    echo -e "${GREEN}✓${RESET} Restored default rule to $config_file"
+}
+
+resolve_rule() {
+    local custom_rule="$1"
+
+    if [ -n "$custom_rule" ]; then
+        if [ ! -f "$custom_rule" ]; then
+            echo -e "${RED}Error:${RESET} Rule file not found: $custom_rule" >&2
+            exit 1
+        fi
+        echo "$custom_rule"
+        return
+    fi
+
+    if [ -f "$USER_RULE_TXT" ]; then
+        echo "$USER_RULE_TXT"
+        return
+    fi
+
+    if [ -f "$USER_RULE_MD" ]; then
+        echo "$USER_RULE_MD"
+        return
+    fi
+
+    if [ -f "$DEFAULT_RULE" ]; then
+        echo "$DEFAULT_RULE"
+        return
+    fi
+
+    echo -e "${RED}Error:${RESET} No rule file found. Run 'gdiff --restore-rule' to create one." >&2
+    exit 1
+}
+
+lazy_init() {
+    local config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/gdiff"
+    local config_file="$config_dir/rule.txt"
+    local config_file_md="$config_dir/rule.md"
+
+    if [ ! -f "$config_file" ] && [ ! -f "$config_file_md" ] && [ -f "$DEFAULT_RULE" ]; then
+        mkdir -p "$config_dir"
+        cp "$DEFAULT_RULE" "$config_file"
+    fi
+}
+
+main() {
+    local custom_rule=""
+    local print_only=false
+    local show_rule_path=false
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -r|--rule)
+                if [[ $# -lt 2 ]]; then
+                    echo -e "${RED}Error:${RESET} Option '$1' requires an argument." >&2
+                    exit 1
+                fi
+                custom_rule="$2"
+                shift 2
+                ;;
+            -p|--print)
+                print_only=true
+                shift
+                ;;
+            --restore-rule)
+                do_restore_rule
+                exit $?
+                ;;
+            --rule-path)
+                show_rule_path=true
+                shift
+                ;;
+            -v|--version)
+                echo "gdiff v${VERSION}"
+                exit 0
+                ;;
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            *)
+                echo -e "${RED}Unknown option:${RESET} '$1'"
+                echo "  Run 'gdiff --help' for a list of valid options."
+                exit 1
+                ;;
+        esac
+    done
+
+
+    local rule_file
+    rule_file=$(resolve_rule "$custom_rule") || exit 1
+
+    if $show_rule_path; then
+        echo "$rule_file"
+        exit 0
+    fi
+
+    lazy_init
+
+    if [ ! -s "$rule_file" ]; then
+        echo -e "${RED}Error:${RESET} Rule file is empty: $rule_file" >&2
+        echo "Please edit the file or run 'gdiff --restore-rule' to restore the default rule." >&2
+        exit 1
+    fi
+    if ! command -v git &>/dev/null; then
+        echo -e "${RED}Error:${RESET} git is not installed." >&2
+        exit 1
+    fi
+
+    if ! git rev-parse --git-dir &>/dev/null; then
+        echo -e "${RED}Error:${RESET} Not inside a git repository." >&2
+        exit 1
+    fi
+
+    if git diff --cached --quiet; then
+        echo -e "${RED}Nothing staged.${RESET} Use 'git add' to stage your changes first." >&2
+        exit 1
+    fi
+
+    stream_content() {
+        git diff --cached --stat
+        echo
+        git diff --cached
+        echo
+        echo
+        cat "$rule_file"
+    }
+
+    if $print_only; then
+        stream_content
+        return 0
+    fi
+
+    local clipboard_cmd
+    clipboard_cmd=$(detect_clipboard)
+
+    if [ -z "$clipboard_cmd" ]; then
+        echo -e "${RED}Error:${RESET} No clipboard tool found (wl-copy, xclip, xsel, pbcopy, clip.exe)." >&2
+        echo "Use --print to output to stdout instead." >&2
+        exit 1
+    fi
+
+    if stream_content | $clipboard_cmd; then
+        echo -e "${GREEN}✓${RESET} Diff + rule copied to clipboard  │  rule: ${CYAN}$(basename "$rule_file")${RESET}"
+    else
+        echo -e "${RED}Error:${RESET} Failed to copy to clipboard." >&2
+        exit 1
+    fi
+}
+
+main "$@"
