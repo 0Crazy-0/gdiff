@@ -1,0 +1,7 @@
+# generados por makepkg
+src/
+pkg/
+gdiff/
+*.pkg.tar.zst
+*.pkg.tar.xz
+*.pkg.tar.gz
