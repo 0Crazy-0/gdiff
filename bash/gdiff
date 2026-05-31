@@ -73,7 +73,7 @@ do_restore_rule() {
 
     mkdir -p "$config_dir"
     cp "$DEFAULT_RULE" "$config_file"
-    echo -e "${GREEN}✓${RESET} Restored default rule to $config_file"
+    echo -e "${GREEN}✓${RESET} Restored default rule to $config_file (from $DEFAULT_RULE)"
 }
 
 resolve_rule() {

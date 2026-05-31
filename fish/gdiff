@@ -75,7 +75,7 @@ function do_restore_rule
 
     mkdir -p "$config_dir"
     cp "$DEFAULT_RULE" "$config_file"
-    echo "$GREEN"✓"$RESET Restored default rule to $config_file"
+    echo "$GREEN"✓"$RESET Restored default rule to $config_file (from $DEFAULT_RULE)"
 end
 
 function resolve_rule
