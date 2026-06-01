@@ -15,3 +15,5 @@ curl -fsSL "https://packages.buildkite.com/crazy/gdiff/gpgkey" \
 echo "deb [signed-by=/etc/apt/keyrings/crazy_gdiff-archive-keyring.gpg] \
 https://packages.buildkite.com/crazy/gdiff/any/ any main" \
   > /etc/apt/sources.list.d/buildkite-crazy-gdiff.list
+
+apt update
