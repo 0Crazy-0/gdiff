@@ -90,6 +90,7 @@ setup_sandbox() {
 
     export HOME="$SANDBOX_DIR/home"
     export XDG_CONFIG_HOME="$SANDBOX_DIR/config"
+    export GDIFF_DEFAULT_RULE="$SANDBOX_DIR/share/rule.txt"
     
     # Configure mock clipboard
     export WAYLAND_DISPLAY="wayland-mock"
