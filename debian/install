@@ -1,0 +1,2 @@
+bash/gdiff usr/bin/
+share/rule.txt usr/share/gdiff/

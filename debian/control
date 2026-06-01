@@ -1,0 +1,15 @@
+Source: gdiff
+Section: utils
+Priority: optional
+Maintainer: 0CrazyLove <axelvasquez582@gmail.com>
+Build-Depends: debhelper (>= 13)
+Standards-Version: 4.5.0
+Homepage: https://github.com/0Crazy-0/gdiff
+
+Package: gdiff
+Architecture: all
+Depends: ${misc:Depends}, git, bash
+Description: CLI tool to copy git diff and rule to clipboard
+ gdiff is a command-line tool that gathers the staged git diff, appends a
+ specified instructions/rule file, and copies the combined output to your
+ clipboard.

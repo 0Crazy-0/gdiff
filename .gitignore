@@ -1,0 +1,9 @@
+debian/.debhelper/
+debian/gdiff/
+debian/gdiff.substvars
+debian/debhelper-build-stamp
+debian/files
+*.deb
+*.buildinfo
+*.changes
+*.dsc
