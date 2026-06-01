@@ -1,6 +1,6 @@
 #!/usr/bin/env fish
 
-set -g VERSION "1.0.0"
+set -g VERSION "1.0.1"
 set -g SCRIPT_DIR (realpath (status dirname))
 set -g DEFAULT_RULE "$GDIFF_DEFAULT_RULE"
 if test -z "$DEFAULT_RULE"

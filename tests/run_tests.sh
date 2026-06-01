@@ -462,8 +462,8 @@ for SHELL_UNDER_TEST in bash fish; do
     run_test_case "1b" "Help option (--help)" "setup_none" "copied" "--help" "" 0 "USAGE" "" ""
 
     # Version command (-v)
-    run_test_case "2a" "Version option (-v)" "setup_none" "copied" "-v" "" 0 "gdiff v1.0.0" "" ""
-    run_test_case "2b" "Version option (--version)" "setup_none" "copied" "--version" "" 0 "gdiff v1.0.0" "" ""
+    run_test_case "2a" "Version option (-v)" "setup_none" "copied" "-v" "" 0 "gdiff v1.0.1" "" ""
+    run_test_case "2b" "Version option (--version)" "setup_none" "copied" "--version" "" 0 "gdiff v1.0.1" "" ""
 
     # Outside Git repo
     run_test_case "3" "Run outside Git repository" "setup_no_git" "copied" "" "" 1 "" "Error: Not inside a git repository." ""
