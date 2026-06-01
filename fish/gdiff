@@ -2,9 +2,12 @@
 
 set -g VERSION "1.0.0"
 set -g SCRIPT_DIR (realpath (status dirname))
-set -g DEFAULT_RULE "/usr/share/gdiff/rule.txt"
-if not test -f "$DEFAULT_RULE"; and test -f "$SCRIPT_DIR/../share/rule.txt"
-    set -g DEFAULT_RULE "$SCRIPT_DIR/../share/rule.txt"
+set -g DEFAULT_RULE "$GDIFF_DEFAULT_RULE"
+if test -z "$DEFAULT_RULE"
+    set -g DEFAULT_RULE "/usr/share/gdiff/rule.txt"
+    if not test -f "$DEFAULT_RULE"; and test -f "$SCRIPT_DIR/../share/rule.txt"
+        set -g DEFAULT_RULE "$SCRIPT_DIR/../share/rule.txt"
+    end
 end
 set -g config_home "$XDG_CONFIG_HOME"
 if test -z "$config_home"
