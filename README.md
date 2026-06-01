@@ -57,10 +57,10 @@ Most AI commit assistants are overly complicated. They demand:
 
 You can install `gdiff` via your system's package manager.
 
-| OS / Distro | Package Manager | Command |
-| :--- | :--- | :--- |
-| **Arch Linux** | AUR | `yay -S gdiff` <br> `paru -S gdiff` |
-| **Debian / Ubuntu** | APT | `curl -fsSL https://raw.githubusercontent.com/0Crazy-0/gdiff/main/debian-setup.sh \| sudo bash` <br> `sudo apt install gdiff` |
+| OS / Distro | Package Manager | Install Command | Update Command |
+| :--- | :--- | :--- | :--- |
+| **Arch Linux** | AUR | `yay -S gdiff` <br> `paru -S gdiff` | `yay -S gdiff` <br> `paru -S gdiff` <br> (or simply `yay` / `paru`) |
+| **Debian / Ubuntu** | APT | `curl -fsSL https://raw.githubusercontent.com/0Crazy-0/gdiff/main/debian-setup.sh \| sudo bash` | `sudo apt update && sudo apt install gdiff` |
 
 ### 2. Prepare Your Changes
 Stage the code changes you want to commit:
