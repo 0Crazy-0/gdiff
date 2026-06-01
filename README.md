@@ -54,13 +54,13 @@ Most AI commit assistants are overly complicated. They demand:
 ## Quick Start
 
 ### 1. Installation
-Install `gdiff` quickly via the Arch User Repository (AUR) or manually.
 
-*   **Arch Linux (AUR)**:
-    ```bash
-    yay -S gdiff
-    ```
-*   **Other Systems**: Read the comprehensive [Installation Guide](docs/installation.md) for macOS and other Linux distributions.
+You can install `gdiff` via your system's package manager.
+
+| OS / Distro | Package Manager | Command |
+| :--- | :--- | :--- |
+| **Arch Linux** | AUR | `yay -S gdiff` <br> `paru -S gdiff` |
+| **Debian / Ubuntu** | APT | `curl -fsSL https://raw.githubusercontent.com/0Crazy-0/gdiff/main/debian-setup.sh \| sudo bash` <br> `sudo apt install gdiff` |
 
 ### 2. Prepare Your Changes
 Stage the code changes you want to commit:
