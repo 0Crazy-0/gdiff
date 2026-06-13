@@ -124,6 +124,7 @@ gdiff --print
 | :--- | :--- | :--- |
 | `-r <file>` | `--rule <file>` | Path to a custom rules file (`.txt` or `.md`) to append instead of the default. |
 | `-p` | `--print` | Stream the output directly to `stdout` rather than saving it to the clipboard. |
+| `-d` | `--diff-only` | Copy only the diff to clipboard, without appending the rule. |
 | | `--restore-rule` | Re-create or restore the default conventional commit rule in `~/.config/gdiff/rule.txt`. |
 | | `--rule-path` | Output the file path of the rule file currently chosen by the resolution engine. |
 | `-v` | `--version` | Display the installed version. |
