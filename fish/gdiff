@@ -44,6 +44,7 @@ function show_help
     echo "$BOLD"OPTIONS"$RESET"
     echo "  -r, --rule <file>   Use a custom rule file (.txt or .md)"
     echo "  -p, --print         Print the output instead of copying to clipboard"
+    echo "  -d, --diff-only     Copy only the diff, without the rule"
     echo "  --restore-rule      Restore default rule to ~/.config/gdiff/rule.txt"
     echo "  --rule-path         Show which rule file is being used"
     echo "  -v, --version       Show version"
@@ -136,13 +137,16 @@ function stream_content
     git diff --cached
     echo
     echo
-    cat "$rule_file"
+    if test -n "$rule_file"
+        cat "$rule_file"
+    end
 end
 
 function main
     set -l custom_rule ""
     set -l print_only false
     set -l show_rule_path false
+    set -l diff_only false
 
     set -l i 1
     while test $i -le (count $argv)
@@ -157,6 +161,9 @@ function main
                 set i (math $i + 2)
             case -p --print
                 set print_only true
+                set i (math $i + 1)
+            case -d --diff-only
+                set diff_only true
                 set i (math $i + 1)
             case --restore-rule
                 do_restore_rule
@@ -177,9 +184,12 @@ function main
         end
     end
 
-    set -l rule_file (resolve_rule "$custom_rule")
-    if test $status -ne 0
-        exit 1
+    set -l rule_file ""
+    if test "$diff_only" = false
+        set rule_file (resolve_rule "$custom_rule")
+        if test $status -ne 0
+            exit 1
+        end
     end
 
     if test "$show_rule_path" = true
@@ -187,9 +197,11 @@ function main
         exit 0
     end
 
-    lazy_init
+    if test "$diff_only" = false
+        lazy_init
+    end
 
-    if not test -s "$rule_file"
+    if test "$diff_only" = false; and not test -s "$rule_file"
         echo "$RED"Error:"$RESET Rule file is empty: $rule_file" >&2
         echo "Please edit the file or run 'gdiff --restore-rule' to restore the default rule." >&2
         exit 1
@@ -224,7 +236,11 @@ function main
     end
 
     if stream_content "$rule_file" | eval "$clipboard_cmd"
-        echo "$GREEN"✓"$RESET Diff + rule copied to clipboard"
+        if test "$diff_only" = true
+            echo "$GREEN"✓"$RESET Diff copied to clipboard"
+        else
+            echo "$GREEN"✓"$RESET Diff + rule copied to clipboard"
+        end
     else
         echo "$RED"Error:"$RESET Failed to copy to clipboard." >&2
         exit 1
