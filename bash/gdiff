@@ -38,6 +38,7 @@ show_help() {
     echo -e "${BOLD}OPTIONS${RESET}"
     echo "  -r, --rule <file>   Use a custom rule file (.txt or .md)"
     echo "  -p, --print         Print the output instead of copying to clipboard"
+    echo "  -d, --diff-only     Copy only the diff, without the rule"
     echo "  --restore-rule      Restore default rule to ~/.config/gdiff/rule.txt"
     echo "  --rule-path         Show which rule file is being used"
     echo "  -v, --version       Show version"
@@ -128,6 +129,7 @@ main() {
     local custom_rule=""
     local print_only=false
     local show_rule_path=false
+    local diff_only=false
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -141,6 +143,10 @@ main() {
                 ;;
             -p|--print)
                 print_only=true
+                shift
+                ;;
+            -d|--diff-only)
+                diff_only=true
                 shift
                 ;;
             --restore-rule)
@@ -167,18 +173,21 @@ main() {
         esac
     done
 
-
-    local rule_file
-    rule_file=$(resolve_rule "$custom_rule") || exit 1
+    local rule_file=""
+    if ! $diff_only; then
+        rule_file=$(resolve_rule "$custom_rule") || exit 1
+    fi
 
     if $show_rule_path; then
         echo "$rule_file"
         exit 0
     fi
 
-    lazy_init
+    if ! $diff_only; then
+        lazy_init
+    fi
 
-    if [ ! -s "$rule_file" ]; then
+    if ! $diff_only && [ ! -s "$rule_file" ]; then
         echo -e "${RED}Error:${RESET} Rule file is empty: $rule_file" >&2
         echo "Please edit the file or run 'gdiff --restore-rule' to restore the default rule." >&2
         exit 1
@@ -204,7 +213,9 @@ main() {
         git diff --cached
         echo
         echo
-        cat "$rule_file"
+        if ! $diff_only; then
+            cat "$rule_file"
+        fi
     }
 
     if $print_only; then
@@ -222,7 +233,11 @@ main() {
     fi
 
     if stream_content | $clipboard_cmd; then
-        echo -e "${GREEN}✓${RESET} Diff + rule copied to clipboard"
+        if $diff_only; then
+            echo -e "${GREEN}✓${RESET} Diff copied to clipboard"
+        else
+            echo -e "${GREEN}✓${RESET} Diff + rule copied to clipboard"
+        fi
     else
         echo -e "${RED}Error:${RESET} Failed to copy to clipboard." >&2
         exit 1
