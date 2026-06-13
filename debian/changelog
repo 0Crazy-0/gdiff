@@ -1,3 +1,9 @@
+gdiff (1.1.0-1) unstable; urgency=low
+
+  * Add --diff-only / -d flag to copy only the diff without the rule.
+
+ -- 0CrazyLove <axelvasquez582@gmail.com>  Fri, 13 Jun 2026 16:13:00 -0500
+
 gdiff (1.0.1-1) unstable; urgency=low
 
   * Fix host environment leak in automated tests.
