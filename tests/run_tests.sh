@@ -447,6 +447,16 @@ EOF
     done
 }
 
+setup_diff_only_no_rule() {
+    setup_git_repo
+    echo "original content" > myfile.txt
+    git add myfile.txt
+    git commit -m "initial commit" -q
+    echo "modified content" > myfile.txt
+    git add myfile.txt
+    # Intentionally NO rule files anywhere — --diff-only should not need them
+}
+
 # RUNNING TESTS
 
 for SHELL_UNDER_TEST in bash fish; do
@@ -528,6 +538,14 @@ for SHELL_UNDER_TEST in bash fish; do
 
     # Missing Git command in environment
     run_test_case "15" "Error when git is not installed" "setup_no_git_installed" "copied" "" "" 1 "" "Error: git is not installed." ""
+
+    # --diff-only / -d flag
+    run_test_case "16a" "Diff-only short flag (-d) copies to clipboard" "setup_staged_changes" "copied" "-d" "" 0 "Diff copied to clipboard" "" "myfile.txt"
+    run_test_case "16b" "Diff-only long flag (--diff-only) copies to clipboard" "setup_staged_changes" "copied" "--diff-only" "" 0 "Diff copied to clipboard" "" "myfile.txt"
+    run_test_case "16c" "Diff-only with print mode (-d -p)" "setup_staged_changes" "copied" "-d -p" "" 0 "myfile.txt" "" ""
+    run_test_case "16d" "Diff-only works without any rule file" "setup_diff_only_no_rule" "copied" "-d" "" 0 "Diff copied to clipboard" "" "myfile.txt"
+    run_test_case "16e" "Diff-only clipboard excludes rule content" "setup_staged_changes" "copied" "-d" "" 0 "Diff copied to clipboard" "" "modified content"
+    run_test_case "16f" "Diff-only print excludes rule content" "setup_staged_changes" "copied" "-d -p" "" 0 "modified content" "" ""
 
 done
 
