@@ -60,6 +60,7 @@ You can install `gdiff` via your system's package manager.
 | OS / Distro | Package Manager | Install Command | Update Command |
 | :--- | :--- | :--- | :--- |
 | **Arch Linux** | AUR | `yay -S gdiff` <br> `paru -S gdiff` | `yay -S gdiff` <br> `paru -S gdiff` <br> (or simply `yay` / `paru`) |
+| **Fedora** | COPR (DNF) | `sudo dnf copr enable crazy/gdiff && sudo dnf install gdiff` | `sudo dnf upgrade gdiff` |
 | **Debian / Ubuntu** | APT | `curl -fsSL https://raw.githubusercontent.com/0Crazy-0/gdiff/main/debian-setup.sh \| sudo bash` | `sudo apt update && sudo apt install gdiff` |
 
 ### 2. Prepare Your Changes
