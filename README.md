@@ -4,6 +4,9 @@
 
 ---
 
+[![Debian: APT](https://img.shields.io/badge/Debian-APT-A81D33.svg?logo=debian&logoColor=white)](#)
+[![Fedora: COPR](https://img.shields.io/badge/Fedora-COPR-51A2DA.svg?logo=fedora&logoColor=white)](#)
+[![Arch Linux: AUR](https://img.shields.io/badge/Arch_Linux-AUR-1793D1.svg?logo=archlinux&logoColor=white)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Shell: Bash](https://img.shields.io/badge/Shell-Bash-4EAA25.svg?logo=gnu-bash&logoColor=white)](https://www.gnu.org/software/bash/)
 [![Local: No API Key Required](https://img.shields.io/badge/API--Key-Not%20Required-brightgreen.svg)](#)
