@@ -6,7 +6,6 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Shell: Bash](https://img.shields.io/badge/Shell-Bash-4EAA25.svg?logo=gnu-bash&logoColor=white)](https://www.gnu.org/software/bash/)
-[![Shell: Fish](https://img.shields.io/badge/Shell-Fish-005F87.svg?logo=fish&logoColor=white)](https://fishshell.com/)
 [![Local: No API Key Required](https://img.shields.io/badge/API--Key-Not%20Required-brightgreen.svg)](#)
 
 Have you ever spent 10 minutes staring at a terminal, trying to figure out what to write in your commit message? `gdiff` is built to solve that exact problem—without the bloated dependencies, paid API keys, or heavy local setups that other commit-helpers force upon you.
@@ -24,7 +23,7 @@ Most AI commit assistants are overly complicated. They demand:
 
 1.  **No API Keys & Completely Free**: It doesn't connect directly to any API. It streams your changes + prompt guidelines to your system clipboard, letting you leverage **any free web LLM interface** (like Gemini, ChatGPT, Claude) or your **IDE-integrated AI chat**.
 2.  **100% Customizable Prompts**: Your rules live in an open text file. You can easily tweak the guidelines to match your company's rules, conventional commit formatting, or personal style.
-3.  **Lightweight & Fast**: Written in pure, highly-optimized shell scripts (**Bash** and **Fish** native versions included) with zero dependencies other than `git` and a system clipboard command.
+3.  **Lightweight & Fast**: Written in a pure, highly-optimized shell script (**Bash**) with an optional native **Fish** version, and zero dependencies other than `git` and a system clipboard command.
 
 ---
 
@@ -62,6 +61,23 @@ You can install `gdiff` via your system's package manager.
 | **Arch Linux** | AUR | `yay -S gdiff` <br> `paru -S gdiff` | `yay -S gdiff` <br> `paru -S gdiff` <br> (or simply `yay` / `paru`) |
 | **Fedora** | COPR (DNF) | `sudo dnf copr enable crazy/gdiff && sudo dnf install gdiff` | `sudo dnf upgrade gdiff` |
 | **Debian / Ubuntu** | APT | `curl -fsSL https://raw.githubusercontent.com/0Crazy-0/gdiff/main/debian-setup.sh \| sudo bash` | `sudo apt update && sudo apt install gdiff` |
+
+All the package managers above install the **Bash** version of `gdiff`. If you are a **Fish** user, see [Optional: Fish version (manual install)](#optional-fish-version-manual-install) below.
+
+### Optional: Fish Version (Manual Install)
+
+The packages only ship the Bash version. If you prefer to use `gdiff` natively from **Fish**, you can install the Fish version manually. The same commands work on **Arch Linux, Fedora, and Debian/Ubuntu** — since `gdiff` is a pure shell script, there are no distro-specific steps:
+
+```bash
+git clone https://github.com/0Crazy-0/gdiff.git
+cd gdiff
+sudo install -Dm755 fish/gdiff /usr/local/bin/gdiff
+sudo install -Dm644 share/rule.txt /usr/share/gdiff/rule.txt
+```
+
+> **Note:** This overwrites the packaged `gdiff` binary with the Fish version. The Bash version stays available inside the repository (`bash/gdiff`) if you ever want to switch back — just re-run the same commands with `bash/gdiff` instead of `fish/gdiff`.
+
+Requirements for the Fish version: `fish` (obviously), `git`, and a clipboard command (`wl-clipboard`, `xclip`, or `xsel`).
 
 ### 2. Prepare Your Changes
 Stage the code changes you want to commit:
@@ -159,8 +175,8 @@ Many tools in the modern ecosystem execute API requests directly. While convenie
 
 By decoupling context gathering (`git diff`) and instruction formatting (`rule.txt`) from AI querying, `gdiff` remains incredibly resilient. The clipboard acts as a universal bridge, allowing you to use cutting-edge web models, local desktop clients, or corporate AI endpoints seamlessly and at zero cost.
 
-### Dual-Shell Native Design
-`gdiff` provides both **Bash** and **Fish** implementations (`bash/gdiff` and `fish/gdiff`). They are written from scratch natively in each shell to avoid unnecessary subprocess invocations and to guarantee fast startup times.
+### Optional Fish Implementation
+`gdiff` also provides a native **Fish** implementation (`fish/gdiff`), written from scratch in Fish to avoid unnecessary subprocess invocations and guarantee fast startup times. Since it is not shipped by the packages, it must be installed manually — see [Optional: Fish version (manual install)](#optional-fish-version-manual-install).
 
 ---
 
