@@ -77,11 +77,11 @@ function Resolve-Rule {
     param([string]$CustomRule)
 
     if ($CustomRule) {
-        if (-not (Test-Path $CustomRule)) {
+        if (-not (Test-Path -LiteralPath $CustomRule -PathType Leaf)) {
             [Console]::Error.WriteLine("Error: Rule file not found: $CustomRule")
             exit 1
         }
-        return (Resolve-Path $CustomRule).Path
+        return (Resolve-Path -LiteralPath $CustomRule).Path
     }
 
     $userRuleTxt = Join-Path $script:USER_CONFIG_DIR "rule.txt"
