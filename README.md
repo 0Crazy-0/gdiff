@@ -63,7 +63,7 @@ You can install `gdiff` via your system's package manager.
 | :--- | :--- | :--- | :--- |
 | **Arch Linux** | AUR | `yay -S gdiff` <br> `paru -S gdiff` | `yay -S gdiff` <br> `paru -S gdiff` <br> (or simply `yay` / `paru`) |
 | **Fedora** | COPR (DNF) | `sudo dnf copr enable crazy/gdiff && sudo dnf install gdiff` | `sudo dnf upgrade gdiff` |
-| **Debian / Ubuntu** | APT | `curl -fsSL https://raw.githubusercontent.com/0Crazy-0/gdiff/main/debian-setup.sh \| sudo bash` | `sudo apt update && sudo apt install gdiff` |
+| <a id="debian"></a>**Debian / Ubuntu** | APT | `curl -fsSL https://raw.githubusercontent.com/0Crazy-0/gdiff/main/debian-setup.sh \| sudo bash` | `sudo apt update && sudo apt install gdiff` |
 
 All the package managers above install the **Bash** version of `gdiff`. If you are a **Fish** user, see [Optional: Fish version (manual install)](#optional-fish-version-manual-install) below.
 
