@@ -160,8 +160,8 @@ jobs:
           cd "$APT_DIR"
           apt-ftparchive packages pool > dists/stable/main/binary-amd64/Packages
           cp dists/stable/main/binary-amd64/Packages dists/stable/main/binary-arm64/Packages
-          gzip -k9 dists/stable/main/binary-amd64/Packages
-          gzip -k9 dists/stable/main/binary-arm64/Packages
+          gzip -kf9 dists/stable/main/binary-amd64/Packages
+          gzip -kf9 dists/stable/main/binary-arm64/Packages
 
           # Signed Release file
           apt-ftparchive \
