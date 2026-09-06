@@ -33,7 +33,7 @@ jobs:
           cat /tmp/aur_known_host >> ~/.ssh/known_hosts
           echo "--- known_hosts content ---"
           cat ~/.ssh/known_hosts
-          echo "GIT_SSH_COMMAND=ssh -i $HOME/.ssh/aur -o StrictHostKeyChecking=yes" >> "$GITHUB_ENV"
+          echo "GIT_SSH_COMMAND=ssh -i $HOME/.ssh/aur -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o StrictHostKeyChecking=yes" >> "$GITHUB_ENV"
       - name: Test SSH connection to AUR
         run: |
           echo "HOME in this step: $HOME"
