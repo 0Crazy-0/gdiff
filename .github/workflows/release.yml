@@ -1,0 +1,287 @@
+name: Release
+
+# Automatically publishes to the 3 distros:
+#   - Debian/Ubuntu : self-hosted apt repository on GitHub Pages (GPG-signed indices)
+#   - Fedora        : COPR (build from SRPM)
+#   - Arch Linux    : AUR (pkgver bump + push to the AUR repo)
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Tag version: $VERSION"
+
+      - name: Verify version in debian/changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if ! grep -Eq "^gdiff \($VERSION(-[0-9]+)?\)" debian/changelog; then
+            echo "::error::debian/changelog does not contain version $VERSION."
+            echo "   Add a 'gdiff ($VERSION-1) unstable' entry before tagging."
+            exit 1
+          fi
+          echo "OK: debian/changelog contains $VERSION"
+
+      - name: Verify version in pkg/gdiff.spec
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if ! grep -Eq "^Version:[[:space:]]*$VERSION[[:space:]]*$" pkg/gdiff.spec; then
+            echo "::error::pkg/gdiff.spec does not contain version $VERSION."
+            echo "   Update the 'Version:' field in the spec before tagging."
+            exit 1
+          fi
+          echo "OK: pkg/gdiff.spec contains $VERSION"
+
+      - name: Verify version in pkg/PKGBUILD
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if ! grep -Eq "^pkgver=$VERSION$" pkg/PKGBUILD; then
+            echo "::error::pkg/PKGBUILD does not contain version $VERSION."
+            echo "   Update 'pkgver=' in the PKGBUILD before tagging."
+            exit 1
+          fi
+          echo "OK: pkg/PKGBUILD contains $VERSION"
+
+
+  # Run the automated test suite before publishing anything
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fish
+
+      - name: Run test suite
+        run: |
+          fish --version
+          ./tests/run_tests.sh
+
+  # Build the .deb + GitHub Release + GPG-signed apt repository on GitHub Pages
+
+  build-deb:
+    needs: [validate, tests]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.validate.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential debhelper devscripts fakeroot apt-utils
+
+      - name: Build .deb
+        run: |
+          dpkg-buildpackage -us -uc -b
+          DEB="$(ls ../*.deb | head -n1)"
+          cp "$DEB" .
+          echo "DEB_FILE=$(basename "$DEB")" >> "$GITHUB_ENV"
+          echo "Built: $(basename "$DEB")"
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.DEB_FILE }}
+          path: ${{ env.DEB_FILE }}
+
+      - name: Upload .deb to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" "$DEB_FILE" --clobber
+          echo "Uploaded $DEB_FILE to release $GITHUB_REF_NAME"
+
+      - name: Import GPG key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          KEY_ID="$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')"
+          echo "GPG_KEY_ID=$KEY_ID" >> "$GITHUB_ENV"
+          echo "Imported GPG key: $KEY_ID"
+
+      - name: Publish apt repository to gh-pages
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GPG_PASSPHRASE" > /tmp/gpg-passphrase
+
+          SITE_DIR="site"
+          APT_DIR="$SITE_DIR/apt"
+
+          # Clone gh-pages (or create it if it does not exist)
+          if git ls-remote --exit-code --heads "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPO}.git" gh-pages > /dev/null 2>&1; then
+            git clone --depth 1 --branch gh-pages \
+              "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPO}.git" "$SITE_DIR"
+          else
+            mkdir -p "$SITE_DIR"
+            cd "$SITE_DIR"
+            git init -b gh-pages
+            git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPO}.git"
+            cd ..
+          fi
+
+          mkdir -p "$APT_DIR/pool/main/g/gdiff" \
+                   "$APT_DIR/dists/stable/main/binary-amd64" \
+                   "$APT_DIR/dists/stable/main/binary-arm64"
+
+          cp "$DEB_FILE" "$APT_DIR/pool/main/g/gdiff/"
+
+          # Package indices (the .deb is Architecture: all)
+          cd "$APT_DIR"
+          apt-ftparchive packages pool > dists/stable/main/binary-amd64/Packages
+          cp dists/stable/main/binary-amd64/Packages dists/stable/main/binary-arm64/Packages
+          gzip -k9 dists/stable/main/binary-amd64/Packages
+          gzip -k9 dists/stable/main/binary-arm64/Packages
+
+          # Signed Release file
+          apt-ftparchive \
+            -o APT::FTPArchive::Release::Origin=gdiff \
+            -o APT::FTPArchive::Release::Label=gdiff \
+            -o APT::FTPArchive::Release::Suite=stable \
+            -o APT::FTPArchive::Release::Codename=stable \
+            -o APT::FTPArchive::Release::Architectures=amd64 arm64 \
+            -o APT::FTPArchive::Release::Components=main \
+            -o APT::FTPArchive::Release::Description="gdiff apt repository" \
+            release dists/stable > dists/stable/Release
+
+          export GPG_TTY="$(tty || true)"
+          gpg --batch --yes --pinentry-mode loopback \
+              --passphrase-file /tmp/gpg-passphrase \
+              --local-user "$GPG_KEY_ID" \
+              --clearsign -o dists/stable/InRelease dists/stable/Release
+          gpg --batch --yes --pinentry-mode loopback \
+              --passphrase-file /tmp/gpg-passphrase \
+              --local-user "$GPG_KEY_ID" \
+              --armor --detach-sign -o dists/stable/Release.gpg dists/stable/Release
+
+          # Public key for debian-setup.sh
+          gpg --armor --export "$GPG_KEY_ID" > KEY.gpg
+
+          # Commit and push
+          cd "$SITE_DIR"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to publish."
+          else
+            git commit -m "publish apt repo: $DEB_FILE ($GITHUB_REF_NAME)"
+            git push origin gh-pages
+            OWNER="${GITHUB_REPOSITORY_OWNER:-$(echo "$GITHUB_REPO" | cut -d/ -f1)}"
+            NAME="$(echo "$GITHUB_REPO" | cut -d/ -f2)"
+            echo "Apt repo published: https://${OWNER}.github.io/${NAME}/apt/"
+          fi
+        env:
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+
+  # Fedora: build the SRPM and submit it to COPR
+
+  copr:
+    needs: [validate, tests]
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    env:
+      VERSION: ${{ needs.validate.outputs.version }}
+    steps:
+      - name: Install dependencies
+        run: |
+          dnf install -y --nodocs rpm-build rpmdevtools copr-cli git findutils nodejs
+
+      - uses: actions/checkout@v4
+
+      - name: Configure copr-cli
+        run: |
+          mkdir -p ~/.config
+          echo "${{ secrets.COPR_CONFIG }}" > ~/.config/copr
+          chmod 600 ~/.config/copr
+
+      - name: Build SRPM
+        run: |
+          mkdir -p ~/rpmbuild/SOURCES
+          spectool -g -C ~/rpmbuild/SOURCES pkg/gdiff.spec
+          rpmbuild -bs pkg/gdiff.spec
+          ls -la ~/rpmbuild/SRPMS/
+
+      - name: Submit to COPR
+        run: |
+          copr-cli build -r fedora-latest-x86_64 -r fedora-rawhide-x86_64 \
+            crazy/gdiff ~/rpmbuild/SRPMS/*.src.rpm
+
+  # Arch Linux: bump pkgver and push to the AUR
+
+  aur:
+    needs: [validate, tests]
+    runs-on: ubuntu-latest
+    container: archlinux:base
+    env:
+      VERSION: ${{ needs.validate.outputs.version }}
+    steps:
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm git openssh pacman-contrib nodejs
+
+      - uses: actions/checkout@v4
+
+      - name: Set up AUR SSH key
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$AUR_SSH_KEY" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          ssh-keyscan -H aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
+          echo "GIT_SSH_COMMAND=ssh -i $HOME/.ssh/aur -o StrictHostKeyChecking=no" >> "$GITHUB_ENV"
+
+      - name: Update PKGBUILD and push to AUR
+        run: |
+          set -euo pipefail
+          git clone ssh://aur@aur.archlinux.org/gdiff.git aur-repo
+          cd aur-repo
+
+          # Bump pkgver (the source uses the tag, sha256sums is SKIP)
+          sed -i "s/^pkgver=.*/pkgver=$VERSION/" PKGBUILD
+
+          # Regenerate .SRCINFO (makepkg refuses to run as root)
+          useradd -m builder 2>/dev/null || true
+          SRCINFO_DIR="$(mktemp -d)"
+          cp PKGBUILD "$SRCINFO_DIR/"
+          chown -R builder "$SRCINFO_DIR"
+          su builder -s /bin/bash -c "cd '$SRCINFO_DIR' && makepkg --printsrcinfo" > .SRCINFO
+          rm -rf "$SRCINFO_DIR"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add PKGBUILD .SRCINFO
+          if git diff --cached --quiet; then
+            echo "AUR is already up to date."
+          else
+            git commit -m "upgpkg: gdiff $VERSION-1"
+            git push origin master
+            echo "AUR updated to $VERSION"
+          fi
