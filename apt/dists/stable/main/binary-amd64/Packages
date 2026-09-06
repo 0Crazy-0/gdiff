@@ -1,0 +1,20 @@
+Package: gdiff
+Architecture: all
+Version: 1.2.0-1
+Priority: optional
+Section: utils
+Maintainer: 0CrazyLove <axelvasquez582@gmail.com>
+Installed-Size: 19
+Depends: git, bash
+Filename: pool/main/g/gdiff/gdiff_1.2.0-1_all.deb
+Size: 4530
+MD5sum: ea3931f1615b680c704f7b6f1830ebf1
+SHA1: 69bace39981e9a39101b46510f274b571a4e672d
+SHA256: fdb9621e1b2a0d7628e4767bdc558eeac5718d8b453ca947f60a9aad4c1de919
+SHA512: a42fd3ba6d4d75bf4f22b92853818879fbb6f2170ff06b0d1c6df84bbcf303ac10581933f60307ac0d0b888f9287698b4855b52ac70232240102aa44416d92de
+Homepage: https://github.com/0Crazy-0/gdiff
+Description: CLI tool to copy git diff and rule to clipboard
+ gdiff is a command-line tool that gathers the staged git diff, appends a
+ specified instructions/rule file, and copies the combined output to your
+ clipboard.
+
