@@ -131,6 +131,7 @@ jobs:
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           GITHUB_REPO: ${{ github.repository }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
           set -euo pipefail
           printf '%s' "$GPG_PASSPHRASE" > /tmp/gpg-passphrase
@@ -201,8 +202,6 @@ jobs:
             NAME="$(echo "$GITHUB_REPO" | cut -d/ -f2)"
             echo "Apt repo published: https://${OWNER}.github.io/${NAME}/apt/"
           fi
-        env:
-          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
 
   # Fedora: build the SRPM and submit it to COPR
 
