@@ -170,7 +170,7 @@ jobs:
             -o APT::FTPArchive::Release::Label=gdiff \
             -o APT::FTPArchive::Release::Suite=stable \
             -o APT::FTPArchive::Release::Codename=stable \
-            -o APT::FTPArchive::Release::Architectures=amd64 arm64 \
+            -o "APT::FTPArchive::Release::Architectures=amd64 arm64" \
             -o APT::FTPArchive::Release::Components=main \
             -o APT::FTPArchive::Release::Description="gdiff apt repository" \
             release dists/stable > dists/stable/Release
