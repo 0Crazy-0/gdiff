@@ -100,7 +100,8 @@ download_and_install() {
 
   ohai "Installing gdiff to $install_dir"
   if [ "$install_dir" = '/usr/local/bin' ] && [ "$(detect_platform)" = 'unix' ] && [ "$(id -u)" != '0' ]; then
-    sudo install -Dm755 "$tmp_dir/gdiff" "$install_dir/gdiff" || abort "Install Error"
+    sudo mkdir -p "$install_dir" || abort "Install Error"
+    sudo install -m755 "$tmp_dir/gdiff" "$install_dir/gdiff" || abort "Install Error"
   else
     mkdir -p "$install_dir" || abort "Install Error"
     install -m755 "$tmp_dir/gdiff" "$install_dir/gdiff" || abort "Install Error"
@@ -134,9 +135,11 @@ download_and_install() {
     if [ ! -f /usr/share/gdiff/rule.txt ]; then
       ohai "Installing default rule to /usr/share/gdiff/rule.txt"
       if [ "$(id -u)" = '0' ]; then
-        install -Dm644 "$tmp_dir/rule.txt" /usr/share/gdiff/rule.txt || abort "Install Error"
+        mkdir -p /usr/share/gdiff || abort "Install Error"
+        install -m644 "$tmp_dir/rule.txt" /usr/share/gdiff/rule.txt || abort "Install Error"
       elif command -v sudo > /dev/null 2>&1; then
-        sudo install -Dm644 "$tmp_dir/rule.txt" /usr/share/gdiff/rule.txt || abort "Install Error"
+        sudo mkdir -p /usr/share/gdiff || abort "Install Error"
+        sudo install -m644 "$tmp_dir/rule.txt" /usr/share/gdiff/rule.txt || abort "Install Error"
       else
         printf 'Warning: could not write /usr/share/gdiff/rule.txt (no sudo).\n' >&2
         printf 'The default rule will be installed to ~/.config/gdiff/ instead.\n' >&2
