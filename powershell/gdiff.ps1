@@ -3,7 +3,7 @@
 #  Port of bash/gdiff for native Windows (PowerShell 5.1+ / PowerShell 7+).
 # ==============================================================================
 
-$script:VERSION = "1.1.0"
+$script:VERSION = "1.2.0"
 $script:SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 # Default rule: repo layout (../share/rule.txt), GDIFF_DEFAULT_RULE, or user config.

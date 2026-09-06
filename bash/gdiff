@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="1.1.0"
+VERSION="1.2.0"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 # Base directory for gdiff user configuration.
 # On Windows (Git Bash / MSYS2 / Cygwin) use %APPDATA%\gdiff, the location
