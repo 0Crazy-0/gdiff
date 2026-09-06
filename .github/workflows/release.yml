@@ -30,18 +30,17 @@ jobs:
       - name: Verify version in debian/changelog
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          if ! grep -Eq "^gdiff \($VERSION(-[0-9]+)?\)" debian/changelog; then
-            echo "::error::debian/changelog does not contain version $VERSION."
-            echo "   Add a 'gdiff ($VERSION-1) unstable' entry before tagging."
+          CHANGELOG_VERSION=$(head -1 debian/changelog | sed -E 's/^gdiff \(([^)]+)\).*/\1/' | sed -E 's/-[0-9]+$//')
+          if [ "$CHANGELOG_VERSION" != "$VERSION" ]; then
+            echo "Version mismatch: changelog has $CHANGELOG_VERSION, tag says $VERSION"
             exit 1
           fi
-          echo "OK: debian/changelog contains $VERSION"
-
       - name: Verify version in pkg/gdiff.spec
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          if ! grep -Eq "^Version:[[:space:]]*$VERSION[[:space:]]*$" pkg/gdiff.spec; then
-            echo "::error::pkg/gdiff.spec does not contain version $VERSION."
+          SPEC_VERSION=$(grep -E "^Version:" pkg/gdiff.spec | sed -E 's/^Version:[[:space:]]*//; s/[[:space:]]*$//')
+          if [ "$SPEC_VERSION" != "$VERSION" ]; then
+            echo "::error::pkg/gdiff.spec has version '$SPEC_VERSION', expected '$VERSION'."
             echo "   Update the 'Version:' field in the spec before tagging."
             exit 1
           fi
@@ -50,8 +49,9 @@ jobs:
       - name: Verify version in pkg/PKGBUILD
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          if ! grep -Eq "^pkgver=$VERSION$" pkg/PKGBUILD; then
-            echo "::error::pkg/PKGBUILD does not contain version $VERSION."
+          PKGBUILD_VERSION=$(grep -E "^pkgver=" pkg/PKGBUILD | sed -E 's/^pkgver=//')
+          if [ "$PKGBUILD_VERSION" != "$VERSION" ]; then
+            echo "::error::pkg/PKGBUILD has version '$PKGBUILD_VERSION', expected '$VERSION'."
             echo "   Update 'pkgver=' in the PKGBUILD before tagging."
             exit 1
           fi
