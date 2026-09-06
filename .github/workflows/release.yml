@@ -78,6 +78,10 @@ jobs:
   # Build the .deb + GitHub Release + GPG-signed apt repository on GitHub Pages
 
   build-deb:
+    concurrency:
+      group: gdiff-apt-publish
+      cancel-in-progress: false
+      queue: max
     needs: [validate, tests]
     runs-on: ubuntu-latest
     env:
