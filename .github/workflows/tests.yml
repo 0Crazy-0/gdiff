@@ -1,0 +1,33 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Shell test suite (bash + fish)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fish
+
+      - name: Run test suite
+        run: |
+          fish --version
+          ./tests/run_tests.sh
+
+      - name: Lint shell scripts (non-blocking)
+        continue-on-error: true
+        run: |
+          sudo apt-get install -y --no-install-recommends shellcheck
+          shellcheck bash/gdiff debian-setup.sh install.sh
