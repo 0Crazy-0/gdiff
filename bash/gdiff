@@ -1,13 +1,29 @@
 #!/usr/bin/env bash
 
-VERSION="1.1.0"
+VERSION="1.2.0"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
-DEFAULT_RULE="${GDIFF_DEFAULT_RULE:-/usr/share/gdiff/rule.txt}"
+# Base directory for gdiff user configuration.
+# On Windows (Git Bash / MSYS2 / Cygwin) use %APPDATA%\gdiff, the location
+# Windows users expect; fall back to ~/.config/gdiff if APPDATA is unset.
+# On unix honor XDG_CONFIG_HOME. There is no usable system /usr/share in
+# Git Bash (it points inside the Git installation), so the default rule
+# also lives in the user config dir there.
+case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*)
+        CONFIG_BASE="${GDIFF_CONFIG_HOME:-${APPDATA:-$HOME/.config}/gdiff}"
+        CONFIG_BASE="${CONFIG_BASE//\\//}"
+        DEFAULT_RULE="${GDIFF_DEFAULT_RULE:-$SCRIPT_DIR/rule.default.txt}"
+        ;;
+    *)
+        CONFIG_BASE="${XDG_CONFIG_HOME:-$HOME/.config}/gdiff"
+        DEFAULT_RULE="${GDIFF_DEFAULT_RULE:-/usr/share/gdiff/rule.txt}"
+        ;;
+esac
 if [ -z "${GDIFF_DEFAULT_RULE:-}" ] && [ ! -f "$DEFAULT_RULE" ] && [ -f "$SCRIPT_DIR/../share/rule.txt" ]; then
     DEFAULT_RULE="$SCRIPT_DIR/../share/rule.txt"
 fi
-USER_RULE_TXT="${XDG_CONFIG_HOME:-$HOME/.config}/gdiff/rule.txt"
-USER_RULE_MD="${XDG_CONFIG_HOME:-$HOME/.config}/gdiff/rule.md"
+USER_RULE_TXT="$CONFIG_BASE/rule.txt"
+USER_RULE_MD="$CONFIG_BASE/rule.md"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -39,20 +55,22 @@ show_help() {
     echo "  -r, --rule <file>   Use a custom rule file (.txt or .md)"
     echo "  -p, --print         Print the output instead of copying to clipboard"
     echo "  -d, --diff-only     Copy only the diff, without the rule"
-    echo "  --restore-rule      Restore default rule to ~/.config/gdiff/rule.txt"
+    echo "  --restore-rule      Restore default rule to $CONFIG_BASE/rule.txt"
     echo "  --rule-path         Show which rule file is being used"
     echo "  -v, --version       Show version"
     echo "  -h, --help          Show this help"
     echo ""
     echo -e "${BOLD}RULE PRECEDENCE${RESET}"
     echo "  1. --rule <file>                 (highest)"
-    echo "  2. ~/.config/gdiff/rule.txt"
-    echo "  3. /usr/share/gdiff/rule.txt     (default)"
+    echo "  2. $CONFIG_BASE/rule.txt"
+    case "$(uname -s)" in
+        MINGW*|MSYS*|CYGWIN*) echo "  3. (no system-wide default on Windows)" ;;
+        *) echo "  3. /usr/share/gdiff/rule.txt     (default)" ;;
+    esac
 }
 
 do_restore_rule() {
-    local config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/gdiff"
-    local config_file="$config_dir/rule.txt"
+    local config_file="$CONFIG_BASE/rule.txt"
 
     if [ ! -f "$DEFAULT_RULE" ]; then
         echo -e "${RED}Error:${RESET} Default rule not found at $DEFAULT_RULE" >&2
@@ -72,7 +90,7 @@ do_restore_rule() {
         esac
     fi
 
-    mkdir -p "$config_dir"
+    mkdir -p "$CONFIG_BASE"
     cp "$DEFAULT_RULE" "$config_file"
     echo -e "${GREEN}✓${RESET} Restored default rule to $config_file (from $DEFAULT_RULE)"
 }
@@ -115,12 +133,11 @@ resolve_rule() {
 }
 
 lazy_init() {
-    local config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/gdiff"
-    local config_file="$config_dir/rule.txt"
-    local config_file_md="$config_dir/rule.md"
+    local config_file="$CONFIG_BASE/rule.txt"
+    local config_file_md="$CONFIG_BASE/rule.md"
 
     if [ ! -f "$config_file" ] && [ ! -f "$config_file_md" ] && [ -f "$DEFAULT_RULE" ]; then
-        mkdir -p "$config_dir"
+        mkdir -p "$CONFIG_BASE"
         cp "$DEFAULT_RULE" "$config_file"
     fi
 }
