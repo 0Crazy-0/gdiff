@@ -61,7 +61,7 @@ resolve_install_dir() {
   elif [ -d "$HOME/.local/bin" ]; then
     printf '%s' "$HOME/.local/bin"
   else
-    printf '%s' '/usr/local/bin'
+    printf '%s' "$HOME/.local/bin"
   fi
 }
 
