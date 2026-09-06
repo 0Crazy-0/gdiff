@@ -121,6 +121,8 @@ download_and_install() {
     # ${var//\\//} bashism, so the same code runs in any sh).
     win_config_base="${GDIFF_CONFIG_HOME:-${APPDATA:-$HOME/.config}/gdiff}"
     win_config_base="$(printf '%s' "$win_config_base" | tr '\\' '/')"
+    ohai "Installing immutable default rule to $install_dir/rule.default.txt"
+    cp "$tmp_dir/rule.txt" "$install_dir/rule.default.txt" || abort "Install Error"
     if [ ! -f "$win_config_base/rule.txt" ]; then
       ohai "Installing default rule to $win_config_base/rule.txt"
       mkdir -p "$win_config_base" || abort "Install Error"
