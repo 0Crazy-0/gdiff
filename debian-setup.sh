@@ -9,11 +9,12 @@ fi
 
 apt update && apt install curl gpg -y
 
-curl -fsSL "https://packages.buildkite.com/crazy/gdiff/gpgkey" \
-  | gpg --dearmor -o /etc/apt/keyrings/crazy_gdiff-archive-keyring.gpg
+# gdiff apt repository (hosted on GitHub Pages, signed with GPG)
+curl -fsSL "https://0crazy-0.github.io/gdiff/apt/KEY.gpg" \
+  | gpg --dearmor -o /etc/apt/keyrings/gdiff-archive-keyring.gpg
 
-echo "deb [signed-by=/etc/apt/keyrings/crazy_gdiff-archive-keyring.gpg] \
-https://packages.buildkite.com/crazy/gdiff/any/ any main" \
-  > /etc/apt/sources.list.d/buildkite-crazy-gdiff.list
+echo "deb [signed-by=/etc/apt/keyrings/gdiff-archive-keyring.gpg] \
+https://0crazy-0.github.io/gdiff/apt stable main" \
+  > /etc/apt/sources.list.d/gdiff.list
 
 apt update && apt install gdiff -y
