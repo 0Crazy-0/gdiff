@@ -135,7 +135,7 @@ jobs:
         run: |
           set -euo pipefail
           printf '%s' "$GPG_PASSPHRASE" > /tmp/gpg-passphrase
-
+          WORKDIR="$(pwd)"
           SITE_DIR="site"
           APT_DIR="$SITE_DIR/apt"
 
@@ -145,7 +145,7 @@ jobs:
               "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPO}.git" "$SITE_DIR"
           else
             mkdir -p "$SITE_DIR"
-            cd "$SITE_DIR"
+            cd "$WORKDIR/$SITE_DIR"
             git init -b gh-pages
             git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPO}.git"
             cd ..
