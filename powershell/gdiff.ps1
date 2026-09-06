@@ -22,10 +22,11 @@ $script:USER_CONFIG_DIR = if ($env:APPDATA) {
 $script:DEFAULT_RULE = $env:GDIFF_DEFAULT_RULE
 if (-not $script:DEFAULT_RULE) {
     $repoRule = Join-Path $script:SCRIPT_DIR "..\share\rule.txt"
+    $installedDefault = Join-Path $script:SCRIPT_DIR "rule.default.txt"
     if (Test-Path $repoRule) {
         $script:DEFAULT_RULE = (Resolve-Path $repoRule).Path
-    } elseif (Test-Path (Join-Path $script:USER_CONFIG_DIR "rule.txt")) {
-        $script:DEFAULT_RULE = Join-Path $script:USER_CONFIG_DIR "rule.txt"
+    } elseif (Test-Path $installedDefault) {
+        $script:DEFAULT_RULE = $installedDefault
     }
 }
 

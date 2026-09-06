@@ -12,7 +12,7 @@ case "$(uname -s)" in
     MINGW*|MSYS*|CYGWIN*)
         CONFIG_BASE="${GDIFF_CONFIG_HOME:-${APPDATA:-$HOME/.config}/gdiff}"
         CONFIG_BASE="${CONFIG_BASE//\\//}"
-        DEFAULT_RULE="${GDIFF_DEFAULT_RULE:-$CONFIG_BASE/rule.txt}"
+        DEFAULT_RULE="${GDIFF_DEFAULT_RULE:-$SCRIPT_DIR/rule.default.txt}"
         ;;
     *)
         CONFIG_BASE="${XDG_CONFIG_HOME:-$HOME/.config}/gdiff"
