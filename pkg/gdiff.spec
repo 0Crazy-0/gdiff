@@ -1,5 +1,5 @@
 Name:           gdiff
-Version:        1.1.0
+Version:        1.2.0
 Release:        1%{?dist}
 Summary:        CLI tool to copy git staged diffs and a rule file to the clipboard
 
@@ -35,6 +35,10 @@ install -Dm644 share/rule.txt %{buildroot}%{_datadir}/gdiff/rule.txt
 %{_datadir}/gdiff/
 
 %changelog
+* Sat Sep 5 2026 Axel Vasquez <axelvasquez582@gmail.com> - 1.2.0-1
+- Add Windows config path support (APPDATA, GDIFF_CONFIG_HOME)
+- Add PowerShell port and universal install script
+
 * Sat Sep  5 2026 Axel Vasquez <axelvasquez582@gmail.com> - 1.1.0-1
 - Initial RPM packaging for Fedora
 - Ship bash script and rule file (noarch)

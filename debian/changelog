@@ -1,3 +1,10 @@
+gdiff (1.2.0-1) unstable; urgency=low
+
+  * Add Windows config path support (APPDATA, GDIFF_CONFIG_HOME).
+  * Add PowerShell port, Windows installer and universal install script.
+
+ -- 0CrazyLove <axelvasquez582@gmail.com>  Sat, 5 Sep 2026 00:00:00 -0500
+
 gdiff (1.1.0-1) unstable; urgency=low
 
   * Add --diff-only / -d flag to copy only the diff without the rule.
