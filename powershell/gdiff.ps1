@@ -53,7 +53,7 @@ function Restore-Rule {
     $configFile = Join-Path $script:USER_CONFIG_DIR "rule.txt"
 
     if (-not $script:DEFAULT_RULE -or -not (Test-Path $script:DEFAULT_RULE)) {
-        Write-Host "Error: Default rule not found at $script:DEFAULT_RULE" -ForegroundColor Red
+        [Console]::Error.WriteLine("Error: Default rule not found at $script:DEFAULT_RULE")
         return 1
     }
 
@@ -78,7 +78,7 @@ function Resolve-Rule {
 
     if ($CustomRule) {
         if (-not (Test-Path $CustomRule)) {
-            Write-Host "Error: Rule file not found: $CustomRule" -ForegroundColor Red
+            [Console]::Error.WriteLine("Error: Rule file not found: $CustomRule")
             exit 1
         }
         return (Resolve-Path $CustomRule).Path
@@ -101,7 +101,7 @@ function Resolve-Rule {
         return $script:DEFAULT_RULE
     }
 
-    Write-Host "Error: No rule file found. Run 'gdiff --restore-rule' to create one." -ForegroundColor Red
+    [Console]::Error.WriteLine("Error: No rule file found. Run 'gdiff --restore-rule' to create one.")
     exit 1
 }
 
@@ -127,7 +127,7 @@ function Main {
         switch -Regex ($arg) {
             '^(--rule|-r)$' {
                 if ($i -ge ($args.Count - 1)) {
-                    Write-Host "Error: Option '$arg' requires an argument." -ForegroundColor Red
+                    [Console]::Error.WriteLine("Error: Option '$arg' requires an argument.")
                     exit 1
                 }
                 $customRule = "$($args[$i + 1])"
@@ -141,8 +141,8 @@ function Main {
             '^(--version|-v)$' { Write-Host "gdiff v$script:VERSION"; exit 0 }
             '^(--help|-h)$' { Show-Help; exit 0 }
             default {
-                Write-Host "Unknown option: '$arg'" -ForegroundColor Red
-                Write-Host "  Run 'gdiff --help' for a list of valid options." -ForegroundColor Red
+                [Console]::Error.WriteLine("Unknown option: '$arg'")
+                [Console]::Error.WriteLine("  Run 'gdiff --help' for a list of valid options.")
                 exit 1
             }
         }
@@ -161,26 +161,26 @@ function Main {
     if (-not $diffOnly) {
         Invoke-LazyInit
         if (-not (Test-Path $ruleFile) -or (Get-Item $ruleFile).Length -eq 0) {
-            Write-Host "Error: Rule file is empty: $ruleFile" -ForegroundColor Red
-            Write-Host "Please edit the file or run 'gdiff --restore-rule' to restore the default rule." -ForegroundColor Red
+            [Console]::Error.WriteLine("Error: Rule file is empty: $ruleFile")
+            [Console]::Error.WriteLine("Please edit the file or run 'gdiff --restore-rule' to restore the default rule.")
             exit 1
         }
     }
 
     if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-        Write-Host "Error: git is not installed." -ForegroundColor Red
+        [Console]::Error.WriteLine("Error: git is not installed.")
         exit 1
     }
 
     git rev-parse --git-dir 2>$null | Out-Null
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "Error: Not inside a git repository." -ForegroundColor Red
+        [Console]::Error.WriteLine("Error: Not inside a git repository.")
         exit 1
     }
 
     git diff --cached --quiet 2>$null | Out-Null
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "Nothing staged. Use 'git add' to stage your changes first." -ForegroundColor Red
+        [Console]::Error.WriteLine("Nothing staged. Use 'git add' to stage your changes first.")
         exit 1
     }
 
@@ -210,9 +210,9 @@ function Main {
     try {
         Set-Clipboard -Value $content -ErrorAction Stop
     } catch {
-        Write-Host "Error: Failed to copy to clipboard." -ForegroundColor Red
-        Write-Host $_.Exception.Message -ForegroundColor Red
-        Write-Host "Use --print to output to stdout instead." -ForegroundColor Red
+        [Console]::Error.WriteLine("Error: Failed to copy to clipboard.")
+        [Console]::Error.WriteLine($_.Exception.Message)
+        [Console]::Error.WriteLine("Use --print to output to stdout instead.")
         exit 1
     }
 
