@@ -235,6 +235,7 @@ jobs:
         run: |
           copr-cli build -r fedora-43-x86_64 -r fedora-43-aarch64 \
                           -r fedora-44-x86_64 -r fedora-44-aarch64 \
+                          -r fedora-rawhide-x86_64 \
                           -r fedora-rawhide-aarch64 \
             crazy/gdiff ~/rpmbuild/SRPMS/*.src.rpm
 
