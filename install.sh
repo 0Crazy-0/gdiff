@@ -141,9 +141,13 @@ download_and_install() {
       else
         printf 'Warning: could not write /usr/share/gdiff/rule.txt (no sudo).\n' >&2
         printf 'The default rule will be installed to ~/.config/gdiff/ instead.\n' >&2
-      xdg_config_base="${XDG_CONFIG_HOME:-$HOME/.config}/gdiff"
-      mkdir -p "$xdg_config_base" || abort "Install Error"
-      cp "$tmp_dir/rule.txt" "$xdg_config_base/rule.txt" || abort "Install Error"
+        xdg_config_base="${XDG_CONFIG_HOME:-$HOME/.config}/gdiff"
+        if [ ! -f "$xdg_config_base/rule.txt" ]; then
+          mkdir -p "$xdg_config_base" || abort "Install Error"
+          cp "$tmp_dir/rule.txt" "$xdg_config_base/rule.txt" || abort "Install Error"
+        else
+          ohai "Existing user rule found at $xdg_config_base/rule.txt (left untouched)"
+        fi
       fi
     else
       ohai "Existing default rule found at /usr/share/gdiff/rule.txt (left untouched)"
