@@ -32,7 +32,6 @@ download() {
   fi
 }
 
-REPO_URL='https://github.com/0Crazy-0/gdiff'
 RAW_URL='https://raw.githubusercontent.com/0Crazy-0/gdiff/main'
 
 detect_platform() {
@@ -83,7 +82,6 @@ check_existing_install() {
 }
 
 download_and_install() {
-  local platform install_dir tmp_dir
   platform="$(detect_platform)"
   install_dir="$(resolve_install_dir)"
 
