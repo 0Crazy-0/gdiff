@@ -46,7 +46,7 @@ print_group_header() {
 
 # Strip ANSI escape sequences from a stream/string
 strip_ansi() {
-    sed 's/\x1b\[[0-9;]*m//g'
+    sed -E 's/\x1b\[[0-9;]*[a-zA-Z]//g; s/\x1b[()][A-Za-z0-9]//g'
 }
 
 # Assert helper functions
