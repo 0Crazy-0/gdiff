@@ -47,9 +47,7 @@ detect_platform() {
 # setups; the script prints a hint otherwise).
 resolve_install_dir() {
   if [ "$(detect_platform)" = 'win32' ]; then
-    # Git Bash: /usr/local/bin maps inside the MSYS root, which is writable
-    # by the user and on PATH by default.
-    printf '%s' '/usr/local/bin'
+    printf '%s' "$HOME/.gdiff"
     return 0
   fi
 
