@@ -70,12 +70,14 @@ check_existing_install() {
   fi
 
   if command -v apt-get > /dev/null 2>&1 && dpkg -s gdiff > /dev/null 2>&1; then
-    ohai "Warning: gdiff is already installed via APT."
-    printf 'The manually installed version will take precedence or conflict.\n'
-    printf 'Consider removing it first:  sudo apt remove gdiff\n\n'
+    abort "gdiff is already installed via APT." \
+          "If you prefer to use this installer, remove it first:  sudo apt remove gdiff"
   elif command -v dnf > /dev/null 2>&1 && dnf list installed gdiff > /dev/null 2>&1; then
-    ohai "Warning: gdiff is already installed via DNF."
-    printf 'Consider removing it first:  sudo dnf remove gdiff\n\n'
+    abort "gdiff is already installed via DNF." \
+          "If you prefer to use this installer, remove it first:  sudo dnf remove gdiff"
+  elif command -v pacman > /dev/null 2>&1 && pacman -Qi gdiff > /dev/null 2>&1; then
+    abort "gdiff is already installed via AUR." \
+          "If you prefer to use this installer, remove it first:  yay -R gdiff (or paru -R gdiff)"
   fi
 }
 
