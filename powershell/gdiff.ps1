@@ -35,6 +35,7 @@ function Show-Help {
     Write-Host "  gdiff [OPTIONS]"
     Write-Host ""
     Write-Host "OPTIONS"
+    Write-Host "  -c, --commit [N]    Diff of a commit in history (default: 1 = latest commit)"
     Write-Host "  -r, --rule <file>   Use a custom rule file (.txt or .md)"
     Write-Host "  -p, --print         Print the output instead of copying to clipboard"
     Write-Host "  -d, --diff-only     Copy only the diff, without the rule"
@@ -120,11 +121,33 @@ function Main {
     $printOnly = $false
     $showRulePath = $false
     $diffOnly = $false
+    $commitMode = $false
+    $commitTarget = ""
 
     $i = 0
     while ($i -lt $args.Count) {
         $arg = "$($args[$i])"
         switch -Regex ($arg) {
+            '^(--commit|-c)$' {
+                $commitMode = $true
+                if (($i + 1) -lt $args.Count) {
+                    $nextArg = "$($args[$i + 1])"
+                    if (($nextArg -notmatch '^-') -or ($nextArg -match '^-[0-9]+$')) {
+                        $commitTarget = $nextArg
+                        $i += 2
+                        continue
+                    }
+                }
+                $commitTarget = "1"
+                $i++
+                continue
+            }
+            '^--commit=(.*)$' {
+                $commitMode = $true
+                $commitTarget = $Matches[1]
+                $i++
+                continue
+            }
             '^(--rule|-r)$' {
                 if ($i -ge ($args.Count - 1)) {
                     [Console]::Error.WriteLine("Error: Option '$arg' requires an argument.")
@@ -178,16 +201,54 @@ function Main {
         exit 1
     }
 
-    git diff --cached --quiet 2>$null | Out-Null
-    if ($LASTEXITCODE -eq 0) {
-        [Console]::Error.WriteLine("Nothing staged. Use 'git add' to stage your changes first.")
-        exit 1
+    $commitHash = ""
+    if ($commitMode) {
+        git rev-parse --verify HEAD 2>$null | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            [Console]::Error.WriteLine("Error: No commits found in repository.")
+            exit 1
+        }
+
+        if ($commitTarget -notmatch '^[1-9][0-9]{0,8}$') {
+            [Console]::Error.WriteLine("Error: Invalid commit position '$commitTarget'. Must be a positive integer (e.g. 1, 2, 3).")
+            exit 1
+        }
+
+        $totalCommitsStr = git rev-list --first-parent --count HEAD 2>$null
+        $totalCommits = 0
+        if ([int]::TryParse($totalCommitsStr, [ref]$totalCommits)) {
+            $targetNum = [int]$commitTarget
+            if ($targetNum -gt $totalCommits) {
+                $commitNoun = if ($totalCommits -eq 1) { "commit" } else { "commits" }
+                [Console]::Error.WriteLine("Error: Commit at position $commitTarget does not exist (branch only has $totalCommits $commitNoun).")
+                exit 1
+            }
+        }
+
+        $offset = ([int]$commitTarget) - 1
+        $commitHash = (git rev-parse --verify "HEAD~$offset^{commit}" 2>$null)
+        if (-not $commitHash) {
+            [Console]::Error.WriteLine("Error: Failed to resolve commit at position $commitTarget.")
+            exit 1
+        }
+    } else {
+        git diff --cached --quiet 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            [Console]::Error.WriteLine("Nothing staged. Use 'git add' to stage your changes first.")
+            exit 1
+        }
     }
 
     if ($printOnly) {
-        git diff --cached --stat
-        Write-Output ""
-        git diff --cached
+        if ($commitMode) {
+            git show -m --first-parent --stat --format="" $commitHash
+            Write-Output ""
+            git show -m --first-parent -p --format="" $commitHash
+        } else {
+            git diff --cached --stat
+            Write-Output ""
+            git diff --cached
+        }
         Write-Output ""
         Write-Output ""
         if (-not $diffOnly) {
@@ -197,9 +258,15 @@ function Main {
     }
 
     $content = @(
-        git diff --cached --stat
-        ""
-        git diff --cached
+        if ($commitMode) {
+            git show -m --first-parent --stat --format="" $commitHash
+            ""
+            git show -m --first-parent -p --format="" $commitHash
+        } else {
+            git diff --cached --stat
+            ""
+            git diff --cached
+        }
         ""
         ""
         if (-not $diffOnly) {
