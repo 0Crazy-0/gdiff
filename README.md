@@ -181,6 +181,22 @@ If you want to view the exact prompt content that would be copied to the clipboa
 gdiff --print
 ```
 
+### How to Copy the Diff of an Existing Commit
+If you want to copy or review the diff of a commit that has already been made instead of staged changes, use the `-c` or `--commit` flag:
+
+```bash
+# Copy the diff of the latest commit (HEAD)
+gdiff -c
+
+# Copy the diff of the commit before the latest (2nd latest, HEAD~1)
+gdiff -c 2
+
+# Print the diff of the commit to stdout without the rule
+gdiff -c 2 -d -p
+```
+
+> **Note on merge commits:** For merge commits, `gdiff` follows the first-parent lineage (`HEAD~N`), and generates the diff against the first parent (the target branch that received the merge).
+
 ---
 
 ## Reference
@@ -189,6 +205,7 @@ gdiff --print
 
 | Flag | Long Option | Description |
 | :--- | :--- | :--- |
+| `-c [N]` | `--commit [N]` | Diff of a commit in history (default: `1` = latest commit `HEAD`). `N` counts from the latest commit, following the first parent. |
 | `-r <file>` | `--rule <file>` | Path to a custom rules file (`.txt` or `.md`) to append instead of the default. |
 | `-p` | `--print` | Stream the output directly to `stdout` rather than saving it to the clipboard. |
 | `-d` | `--diff-only` | Copy only the diff to clipboard, without appending the rule. |
