@@ -13,7 +13,7 @@
 [![Shell: Bash](https://img.shields.io/badge/Shell-Bash-4EAA25.svg?logo=gnu-bash&logoColor=white)](https://www.gnu.org/software/bash/)
 [![Local: No API Key Required](https://img.shields.io/badge/API--Key-Not%20Required-brightgreen.svg)](#)
 
-Have you ever spent 10 minutes staring at a terminal, trying to figure out what to write in your commit message? `gdiff` is built to solve that exact problem—without the bloated dependencies, paid API keys, or heavy local setups that other commit-helpers force upon you.
+Have you ever spent 10 minutes staring at a terminal, trying to figure out what to write in your commit message? `gdiff` is built to solve that exact problem, without the bloated dependencies, paid API keys, or heavy local setups that other commit-helpers force upon you.
 
 ---
 
@@ -67,7 +67,7 @@ You can install `gdiff` via your system's package manager or with the universal 
 | <a id="debian"></a>**Debian / Ubuntu** | APT | `curl -fsSL https://raw.githubusercontent.com/0Crazy-0/gdiff/main/debian-setup.sh \| sudo bash` | `sudo apt update && sudo apt install gdiff` |
 | <a id="fedora"></a>**Fedora** | COPR (DNF) | `sudo dnf copr enable crazy/gdiff && sudo dnf install gdiff` | `sudo dnf upgrade gdiff` |
 | <a id="arch"></a>**Arch Linux** | AUR | `yay -S gdiff` <br> `paru -S gdiff` | `yay -S gdiff` <br> `paru -S gdiff` <br> (or simply `yay` / `paru`) |
-| <a id="linux--macos"></a>**Linux / macOS** (any distro) | Universal script | `curl -fsSL https://raw.githubusercontent.com/0Crazy-0/gdiff/main/install.sh \| sh` <br> (also works on Windows via **Git Bash / MSYS2** — see [Windows Installation](#windows-installation)) | re-run the same command |
+| <a id="linux--macos"></a>**Linux / macOS** (any distro) | Universal script | `curl -fsSL https://raw.githubusercontent.com/0Crazy-0/gdiff/main/install.sh \| sh` <br> (also works on Windows via **Git Bash / MSYS2**; see [Windows Installation](#windows-installation)) | re-run the same command |
 
 All the package managers above install the **Bash** version of `gdiff`. If you are a **Fish** user, see [Optional: Fish version (manual install)](#optional-fish-version-manual-install).
 
@@ -75,7 +75,7 @@ All the package managers above install the **Bash** version of `gdiff`. If you a
 
 `gdiff` fully supports Windows through three channels: native **PowerShell**, **Git Bash / MSYS2**, and **WSL**.
 
-#### Windows Native (PowerShell) — Recommended
+#### Windows Native (PowerShell): Recommended
 
 Open any PowerShell window and run:
 
@@ -85,8 +85,8 @@ irm https://raw.githubusercontent.com/0Crazy-0/gdiff/main/windows-setup.ps1 | ie
 
 The installer:
 * Downloads the PowerShell port (`gdiff.ps1`) into `~\.gdiff` and adds it to your user `PATH`.
-* Creates a `gdiff.cmd` shim so you can just type `gdiff` from any terminal — PowerShell, CMD, **Git Bash**, **Warp**, Windows Terminal, etc.
-* Uses the native `Set-Clipboard` cmdlet — no extra dependencies, only `git` is required.
+* Creates a `gdiff.cmd` shim so you can just type `gdiff` from any terminal: PowerShell, CMD, **Git Bash**, **Warp**, Windows Terminal, etc.
+* Uses the native `Set-Clipboard` cmdlet (no extra dependencies, only `git` is required).
 * Is **idempotent**: re-running it updates `gdiff` and never touches your custom rules at `%APPDATA%\gdiff\rule.txt`.
 
 #### Git Bash on Windows
@@ -110,11 +110,11 @@ The recommended way inside WSL depends on the distro you installed:
 curl -fsSL https://raw.githubusercontent.com/0Crazy-0/gdiff/main/install.sh | sh
 ```
 
-In both cases the Bash version works as-is inside WSL and uses `clip.exe` through WSL interop — no extra clipboard tools needed.
+In both cases the Bash version works as-is inside WSL and uses `clip.exe` through WSL interop (no extra clipboard tools needed).
 
 ### Optional: Fish Version (Manual Install)
 
-The packages only ship the Bash version. If you prefer to use `gdiff` natively from **Fish**, you can install the Fish version manually. The same commands work on **Arch Linux, Fedora, and Debian/Ubuntu** — since `gdiff` is a pure shell script, there are no distro-specific steps:
+The packages only ship the Bash version. If you prefer to use `gdiff` natively from **Fish**, you can install the Fish version manually. The same commands work on **Arch Linux, Fedora, and Debian/Ubuntu**. Since `gdiff` is a pure shell script, there are no distro-specific steps:
 
 ```bash
 git clone https://github.com/0Crazy-0/gdiff.git
@@ -123,11 +123,11 @@ sudo install -Dm755 fish/gdiff /usr/local/bin/gdiff
 sudo install -Dm644 share/rule.txt /usr/share/gdiff/rule.txt
 ```
 
-> **Note:** This overwrites the packaged `gdiff` binary with the Fish version. The Bash version stays available inside the repository (`bash/gdiff`) if you ever want to switch back — just re-run the same commands with `bash/gdiff` instead of `fish/gdiff`.
+> **Note:** This overwrites the packaged `gdiff` binary with the Fish version. The Bash version stays available inside the repository (`bash/gdiff`) if you ever want to switch back; just re-run the same commands with `bash/gdiff` instead of `fish/gdiff`.
 
 Requirements for the Fish version: `fish` (obviously), `git`, and a clipboard command (`wl-clipboard`, `xclip`, or `xsel`).
 
-> **Platform note:** the Fish version is **Linux/macOS/WSL only** — there is no native Fish build for Windows. On Windows, use the [PowerShell version](#windows-installation) or the Bash version (Git Bash/MSYS2). Inside WSL, Fish works exactly like on Linux.
+> **Platform note:** the Fish version is **Linux/macOS/WSL only** (there is no native Fish build for Windows). On Windows, use the [PowerShell version](#windows-installation) or the Bash version (Git Bash/MSYS2). Inside WSL, Fish works exactly like on Linux.
 
 ### 2. Prepare Your Changes
 Stage the code changes you want to commit:
@@ -244,7 +244,7 @@ Many tools in the modern ecosystem execute API requests directly. While convenie
 By decoupling context gathering (`git diff`) and instruction formatting (`rule.txt`) from AI querying, `gdiff` remains incredibly resilient. The clipboard acts as a universal bridge, allowing you to use cutting-edge web models, local desktop clients, or corporate AI endpoints seamlessly and at zero cost.
 
 ### Optional Fish Implementation
-`gdiff` also provides a native **Fish** implementation (`fish/gdiff`), written from scratch in Fish to avoid unnecessary subprocess invocations and guarantee fast startup times. Since it is not shipped by the packages, it must be installed manually — see [Optional: Fish version (manual install)](#optional-fish-version-manual-install).
+`gdiff` also provides a native **Fish** implementation (`fish/gdiff`), written from scratch in Fish to avoid unnecessary subprocess invocations and guarantee fast startup times. Since it is not shipped by the packages, it must be installed manually (see [Optional: Fish version (manual install)](#optional-fish-version-manual-install)).
 
 ---
 
