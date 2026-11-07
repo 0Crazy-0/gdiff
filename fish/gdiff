@@ -42,6 +42,7 @@ function show_help
     echo "  gdiff [OPTIONS]"
     echo ""
     echo "$BOLD"OPTIONS"$RESET"
+    echo "  -c, --commit [REF]  Diff of a commit: position, hash or ref (default: 1 = latest)"
     echo "  -r, --rule <file>   Use a custom rule file (.txt or .md)"
     echo "  -p, --print         Print the output instead of copying to clipboard"
     echo "  -d, --diff-only     Copy only the diff, without the rule"
@@ -130,11 +131,88 @@ function lazy_init
     end
 end
 
-function stream_content
-    set -l rule_file "$argv[1]"
+# Mode: staged 
+function require_staged
+    if git diff --cached --quiet
+        echo "$RED"Nothing staged."$RESET Use 'git add' to stage your changes first." >&2
+        return 1
+    end
+end
+
+function stream_staged
     git diff --cached --stat
     echo
     git diff --cached
+end
+
+# Mode: commit
+# Prints the resolved commit hash on stdout; errors go to stderr.
+function resolve_commit
+    set -l commit_target "$argv[1]"
+    set -l commit_hash ""
+
+    if not git rev-parse --verify HEAD >/dev/null 2>&1
+        echo "$RED"Error:"$RESET No commits found in repository." >&2
+        return 1
+    end
+
+    if string match -qr -- '^[0-9]{1,6}$' "$commit_target"
+        # Short all-digit values are positions counting back from HEAD
+        if not string match -qr -- '^[1-9][0-9]*$' "$commit_target"
+            echo "$RED"Error:"$RESET Invalid commit position '$commit_target'. Must be a positive integer (e.g. 1, 2, 3)." >&2
+            return 1
+        end
+
+        set -l total_commits (git rev-list --first-parent --count HEAD 2>/dev/null)
+        if test "$commit_target" -gt "$total_commits"
+            set -l commit_noun "commits"
+            if test "$total_commits" -eq 1
+                set commit_noun "commit"
+            end
+            echo "$RED"Error:"$RESET Commit at position $commit_target does not exist (branch only has $total_commits $commit_noun)." >&2
+            return 1
+        end
+
+        set -l offset (math "$commit_target - 1")
+        set commit_hash (git rev-parse --verify "HEAD~$offset^{commit}" 2>/dev/null)
+        if test -z "$commit_hash"
+            echo "$RED"Error:"$RESET Failed to resolve commit at position $commit_target." >&2
+            return 1
+        end
+    else
+        # Anything else is treated as a hash or ref
+        if test -z "$commit_target"; or string match -q -- '-*' "$commit_target"
+            echo "$RED"Error:"$RESET Invalid commit '$commit_target'. Use a position (e.g. 1, 2, 3) or a commit hash." >&2
+            return 1
+        end
+
+        set commit_hash (git rev-parse --verify --quiet "$commit_target^{commit}" 2>/dev/null)
+        if test -z "$commit_hash"
+            echo "$RED"Error:"$RESET Commit '$commit_target' not found." >&2
+            return 1
+        end
+    end
+
+    echo "$commit_hash"
+end
+
+function stream_commit
+    set -l commit_hash "$argv[1]"
+    git show -m --first-parent --stat --format="" "$commit_hash"
+    echo
+    git show -m --first-parent -p --format="" "$commit_hash"
+end
+
+function stream_content
+    set -l mode "$argv[1]"
+    set -l rule_file "$argv[2]"
+    set -l commit_hash "$argv[3]"
+    switch "$mode"
+        case staged
+            stream_staged
+        case commit
+            stream_commit "$commit_hash"
+    end
     echo
     echo
     if test -n "$rule_file"
@@ -147,10 +225,32 @@ function main
     set -l print_only false
     set -l show_rule_path false
     set -l diff_only false
+    set -l mode staged
+    set -l commit_target ""
 
     set -l i 1
     while test $i -le (count $argv)
         switch $argv[$i]
+            case -c --commit
+                set mode commit
+                set -l next_i (math $i + 1)
+                if test $next_i -le (count $argv)
+                    set -l next_val $argv[$next_i]
+                    if not string match -q -- '-*' "$next_val"; or string match -qr -- '^-[0-9]+$' "$next_val"
+                        set commit_target "$next_val"
+                        set i (math $i + 2)
+                    else
+                        set commit_target "1"
+                        set i (math $i + 1)
+                    end
+                else
+                    set commit_target "1"
+                    set i (math $i + 1)
+                end
+            case '--commit=*'
+                set mode commit
+                set commit_target (string replace -r '^--commit=' '' -- "$argv[$i]")
+                set i (math $i + 1)
             case -r --rule
                 set -l next_i (math $i + 1)
                 if test $next_i -gt (count $argv)
@@ -217,13 +317,19 @@ function main
         exit 1
     end
 
-    if git diff --cached --quiet
-        echo "$RED"Nothing staged."$RESET Use 'git add' to stage your changes first." >&2
-        exit 1
+    set -l commit_hash ""
+    switch "$mode"
+        case staged
+            require_staged; or exit 1
+        case commit
+            set commit_hash (resolve_commit "$commit_target")
+            if test $status -ne 0
+                exit 1
+            end
     end
 
     if test "$print_only" = true
-        stream_content "$rule_file"
+        stream_content "$mode" "$rule_file" "$commit_hash"
         return 0
     end
 
@@ -235,7 +341,7 @@ function main
         exit 1
     end
 
-    if stream_content "$rule_file" | eval "$clipboard_cmd"
+    if stream_content "$mode" "$rule_file" "$commit_hash" | eval "$clipboard_cmd"
         if test "$diff_only" = true
             echo "$GREEN"✓"$RESET Diff copied to clipboard"
         else

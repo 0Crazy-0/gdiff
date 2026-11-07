@@ -35,6 +35,7 @@ function Show-Help {
     Write-Host "  gdiff [OPTIONS]"
     Write-Host ""
     Write-Host "OPTIONS"
+    Write-Host "  -c, --commit [REF]  Diff of a commit: position, hash or ref (default: 1 = latest)"
     Write-Host "  -r, --rule <file>   Use a custom rule file (.txt or .md)"
     Write-Host "  -p, --print         Print the output instead of copying to clipboard"
     Write-Host "  -d, --diff-only     Copy only the diff, without the rule"
@@ -115,16 +116,134 @@ function Invoke-LazyInit {
         Copy-Item $script:DEFAULT_RULE $configFile -Force
     }
 }
+
+#  Mode: staged 
+function Assert-Staged {
+    git diff --cached --quiet 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        [Console]::Error.WriteLine("Nothing staged. Use 'git add' to stage your changes first.")
+        exit 1
+    }
+}
+
+function Get-StagedDiff {
+    git diff --cached --stat
+    ""
+    git diff --cached
+}
+
+# Mode: commit 
+# Returns the resolved commit hash; errors go to stderr and exit the script.
+function Resolve-Commit {
+    param([string]$CommitTarget)
+
+    git rev-parse --verify HEAD 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        [Console]::Error.WriteLine("Error: No commits found in repository.")
+        exit 1
+    }
+
+    if ($CommitTarget -match '^[0-9]{1,6}$') {
+        # Short all-digit values are positions counting back from HEAD
+        if ($CommitTarget -notmatch '^[1-9][0-9]*$') {
+            [Console]::Error.WriteLine("Error: Invalid commit position '$CommitTarget'. Must be a positive integer (e.g. 1, 2, 3).")
+            exit 1
+        }
+
+        $totalCommitsStr = git rev-list --first-parent --count HEAD 2>$null
+        $totalCommits = 0
+        if ([int]::TryParse($totalCommitsStr, [ref]$totalCommits)) {
+            $targetNum = [int]$CommitTarget
+            if ($targetNum -gt $totalCommits) {
+                $commitNoun = if ($totalCommits -eq 1) { "commit" } else { "commits" }
+                [Console]::Error.WriteLine("Error: Commit at position $CommitTarget does not exist (branch only has $totalCommits $commitNoun).")
+                exit 1
+            }
+        }
+
+        $offset = ([int]$CommitTarget) - 1
+        $commitHash = (git rev-parse --verify "HEAD~$offset^{commit}" 2>$null)
+        if (-not $commitHash) {
+            [Console]::Error.WriteLine("Error: Failed to resolve commit at position $CommitTarget.")
+            exit 1
+        }
+    } else {
+        # Anything else is treated as a hash or ref
+        if ([string]::IsNullOrEmpty($CommitTarget) -or $CommitTarget.StartsWith('-')) {
+            [Console]::Error.WriteLine("Error: Invalid commit '$CommitTarget'. Use a position (e.g. 1, 2, 3) or a commit hash.")
+            exit 1
+        }
+
+        $commitHash = (git rev-parse --verify --quiet "$CommitTarget^{commit}" 2>$null)
+        if (-not $commitHash) {
+            [Console]::Error.WriteLine("Error: Commit '$CommitTarget' not found.")
+            exit 1
+        }
+    }
+
+    return $commitHash
+}
+
+function Get-CommitDiff {
+    param([string]$CommitHash)
+
+    git show -m --first-parent --stat --format="" $CommitHash
+    ""
+    git show -m --first-parent -p --format="" $CommitHash
+}
+
+# Output
+# Emits the diff of the active mode followed by the rule (if any), line by line.
+function Get-GdiffContent {
+    param(
+        [string]$Mode,
+        [string]$RuleFile,
+        [string]$CommitHash
+    )
+
+    switch ($Mode) {
+        'staged' { Get-StagedDiff }
+        'commit' { Get-CommitDiff -CommitHash $CommitHash }
+    }
+    ""
+    ""
+    if ($RuleFile) {
+        Get-Content $RuleFile
+    }
+}
+
 function Main {
     $customRule = ""
     $printOnly = $false
     $showRulePath = $false
     $diffOnly = $false
+    $mode = "staged"
+    $commitTarget = ""
 
     $i = 0
     while ($i -lt $args.Count) {
         $arg = "$($args[$i])"
         switch -Regex ($arg) {
+            '^(--commit|-c)$' {
+                $mode = "commit"
+                if (($i + 1) -lt $args.Count) {
+                    $nextArg = "$($args[$i + 1])"
+                    if (($nextArg -notmatch '^-') -or ($nextArg -match '^-[0-9]+$')) {
+                        $commitTarget = $nextArg
+                        $i += 2
+                        continue
+                    }
+                }
+                $commitTarget = "1"
+                $i++
+                continue
+            }
+            '^--commit=(.*)$' {
+                $mode = "commit"
+                $commitTarget = $Matches[1]
+                $i++
+                continue
+            }
             '^(--rule|-r)$' {
                 if ($i -ge ($args.Count - 1)) {
                     [Console]::Error.WriteLine("Error: Option '$arg' requires an argument.")
@@ -178,34 +297,18 @@ function Main {
         exit 1
     }
 
-    git diff --cached --quiet 2>$null | Out-Null
-    if ($LASTEXITCODE -eq 0) {
-        [Console]::Error.WriteLine("Nothing staged. Use 'git add' to stage your changes first.")
-        exit 1
+    $commitHash = ""
+    switch ($mode) {
+        'staged' { Assert-Staged }
+        'commit' { $commitHash = Resolve-Commit -CommitTarget $commitTarget }
     }
 
     if ($printOnly) {
-        git diff --cached --stat
-        Write-Output ""
-        git diff --cached
-        Write-Output ""
-        Write-Output ""
-        if (-not $diffOnly) {
-            Get-Content $ruleFile
-        }
+        Get-GdiffContent -Mode $mode -RuleFile $ruleFile -CommitHash $commitHash
         exit 0
     }
 
-    $content = @(
-        git diff --cached --stat
-        ""
-        git diff --cached
-        ""
-        ""
-        if (-not $diffOnly) {
-            Get-Content $ruleFile
-        }
-    ) -join "`n"
+    $content = @(Get-GdiffContent -Mode $mode -RuleFile $ruleFile -CommitHash $commitHash) -join "`n"
 
     try {
         Set-Clipboard -Value $content -ErrorAction Stop
