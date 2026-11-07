@@ -35,7 +35,7 @@ function Show-Help {
     Write-Host "  gdiff [OPTIONS]"
     Write-Host ""
     Write-Host "OPTIONS"
-    Write-Host "  -c, --commit [N]    Diff of a commit in history (default: 1 = latest commit)"
+    Write-Host "  -c, --commit [REF]  Diff of a commit: position, hash or ref (default: 1 = latest)"
     Write-Host "  -r, --rule <file>   Use a custom rule file (.txt or .md)"
     Write-Host "  -p, --print         Print the output instead of copying to clipboard"
     Write-Host "  -d, --diff-only     Copy only the diff, without the rule"
@@ -209,27 +209,42 @@ function Main {
             exit 1
         }
 
-        if ($commitTarget -notmatch '^[1-9][0-9]{0,8}$') {
-            [Console]::Error.WriteLine("Error: Invalid commit position '$commitTarget'. Must be a positive integer (e.g. 1, 2, 3).")
-            exit 1
-        }
-
-        $totalCommitsStr = git rev-list --first-parent --count HEAD 2>$null
-        $totalCommits = 0
-        if ([int]::TryParse($totalCommitsStr, [ref]$totalCommits)) {
-            $targetNum = [int]$commitTarget
-            if ($targetNum -gt $totalCommits) {
-                $commitNoun = if ($totalCommits -eq 1) { "commit" } else { "commits" }
-                [Console]::Error.WriteLine("Error: Commit at position $commitTarget does not exist (branch only has $totalCommits $commitNoun).")
+        if ($commitTarget -match '^[0-9]{1,6}$') {
+            # Short all-digit values are positions counting back from HEAD
+            if ($commitTarget -notmatch '^[1-9][0-9]*$') {
+                [Console]::Error.WriteLine("Error: Invalid commit position '$commitTarget'. Must be a positive integer (e.g. 1, 2, 3).")
                 exit 1
             }
-        }
 
-        $offset = ([int]$commitTarget) - 1
-        $commitHash = (git rev-parse --verify "HEAD~$offset^{commit}" 2>$null)
-        if (-not $commitHash) {
-            [Console]::Error.WriteLine("Error: Failed to resolve commit at position $commitTarget.")
-            exit 1
+            $totalCommitsStr = git rev-list --first-parent --count HEAD 2>$null
+            $totalCommits = 0
+            if ([int]::TryParse($totalCommitsStr, [ref]$totalCommits)) {
+                $targetNum = [int]$commitTarget
+                if ($targetNum -gt $totalCommits) {
+                    $commitNoun = if ($totalCommits -eq 1) { "commit" } else { "commits" }
+                    [Console]::Error.WriteLine("Error: Commit at position $commitTarget does not exist (branch only has $totalCommits $commitNoun).")
+                    exit 1
+                }
+            }
+
+            $offset = ([int]$commitTarget) - 1
+            $commitHash = (git rev-parse --verify "HEAD~$offset^{commit}" 2>$null)
+            if (-not $commitHash) {
+                [Console]::Error.WriteLine("Error: Failed to resolve commit at position $commitTarget.")
+                exit 1
+            }
+        } else {
+            # Anything else is treated as a hash or ref
+            if ([string]::IsNullOrEmpty($commitTarget) -or $commitTarget.StartsWith('-')) {
+                [Console]::Error.WriteLine("Error: Invalid commit '$commitTarget'. Use a position (e.g. 1, 2, 3) or a commit hash.")
+                exit 1
+            }
+
+            $commitHash = (git rev-parse --verify --quiet "$commitTarget^{commit}" 2>$null)
+            if (-not $commitHash) {
+                [Console]::Error.WriteLine("Error: Commit '$commitTarget' not found.")
+                exit 1
+            }
         }
     } else {
         git diff --cached --quiet 2>$null | Out-Null
