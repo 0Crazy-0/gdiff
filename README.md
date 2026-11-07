@@ -182,20 +182,26 @@ gdiff --print
 ```
 
 ### How to Copy the Diff of an Existing Commit
-If you want to copy or review the diff of a commit that has already been made instead of staged changes, use the `-c` or `--commit` flag:
+If you want to copy or review the diff of a commit that has already been made instead of staged changes, use the `-c` or `--commit` flag with an optional position, commit hash, or ref:
 
 ```bash
 # Copy the diff of the latest commit (HEAD)
 gdiff -c
 
-# Copy the diff of the commit before the latest (2nd latest, HEAD~1)
+# Copy the diff of the commit before the latest (2nd latest in history, HEAD~1)
 gdiff -c 2
 
-# Print the diff of the commit to stdout without the rule
+# Copy the diff of a specific commit by hash
+gdiff -c a1b2c3d
+
+# Copy the diff of a specific ref or tag
+gdiff -c v1.2.0
+
+# Print the diff of a commit to stdout without the rule
 gdiff -c 2 -d -p
 ```
 
-> **Note on merge commits:** For merge commits, `gdiff` follows the first-parent lineage (`HEAD~N`), and generates the diff against the first parent (the target branch that received the merge).
+> **Note on merge commits:** For merge commits, `gdiff` follows the first-parent lineage when using numeric positions (`HEAD~N`), and generates the diff against the first parent (the target branch that received the merge).
 
 ---
 
@@ -205,7 +211,7 @@ gdiff -c 2 -d -p
 
 | Flag | Long Option | Description |
 | :--- | :--- | :--- |
-| `-c [N]` | `--commit [N]` | Diff of a commit in history (default: `1` = latest commit `HEAD`). `N` counts from the latest commit, following the first parent. |
+| `-c [REF]` | `--commit [REF]` | Diff of a commit: position, hash or ref (default: `1` = latest commit `HEAD`). Positions count from the latest commit, following the first parent. |
 | `-r <file>` | `--rule <file>` | Path to a custom rules file (`.txt` or `.md`) to append instead of the default. |
 | `-p` | `--print` | Stream the output directly to `stdout` rather than saving it to the clipboard. |
 | `-d` | `--diff-only` | Copy only the diff to clipboard, without appending the rule. |
