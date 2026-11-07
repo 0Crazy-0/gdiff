@@ -143,18 +143,91 @@ lazy_init() {
     fi
 }
 
+# Mode: staged
+require_staged() {
+    if git diff --cached --quiet; then
+        echo -e "${RED}Nothing staged.${RESET} Use 'git add' to stage your changes first." >&2
+        return 1
+    fi
+}
+
+stream_staged() {
+    git diff --cached --stat
+    echo
+    git diff --cached
+}
+
+# Mode: commit
+# Prints the resolved commit hash on stdout; errors go to stderr.
+resolve_commit() {
+    local commit_target="$1"
+    local commit_hash=""
+
+    if ! git rev-parse --verify HEAD &>/dev/null; then
+        echo -e "${RED}Error:${RESET} No commits found in repository." >&2
+        return 1
+    fi
+
+    if [[ "$commit_target" =~ ^[0-9]{1,6}$ ]]; then
+        # Short all-digit values are positions counting back from HEAD
+        if ! [[ "$commit_target" =~ ^[1-9][0-9]*$ ]]; then
+            echo -e "${RED}Error:${RESET} Invalid commit position '$commit_target'. Must be a positive integer (e.g. 1, 2, 3)." >&2
+            return 1
+        fi
+
+        local total_commits
+        total_commits=$(git rev-list --first-parent --count HEAD 2>/dev/null)
+        if [ "$commit_target" -gt "$total_commits" ]; then
+            local commit_noun="commits"
+            if [ "$total_commits" -eq 1 ]; then
+                commit_noun="commit"
+            fi
+            echo -e "${RED}Error:${RESET} Commit at position $commit_target does not exist (branch only has $total_commits $commit_noun)." >&2
+            return 1
+        fi
+
+        local offset=$((commit_target - 1))
+        commit_hash=$(git rev-parse --verify "HEAD~${offset}^{commit}" 2>/dev/null)
+        if [ -z "$commit_hash" ]; then
+            echo -e "${RED}Error:${RESET} Failed to resolve commit at position $commit_target." >&2
+            return 1
+        fi
+    else
+        # Anything else is treated as a hash or ref
+        if [[ -z "$commit_target" || "$commit_target" == -* ]]; then
+            echo -e "${RED}Error:${RESET} Invalid commit '$commit_target'. Use a position (e.g. 1, 2, 3) or a commit hash." >&2
+            return 1
+        fi
+
+        commit_hash=$(git rev-parse --verify --quiet "${commit_target}^{commit}" 2>/dev/null)
+        if [ -z "$commit_hash" ]; then
+            echo -e "${RED}Error:${RESET} Commit '$commit_target' not found." >&2
+            return 1
+        fi
+    fi
+
+    echo "$commit_hash"
+}
+
+stream_commit() {
+    local commit_hash="$1"
+    git show -m --first-parent --stat --format="" "$commit_hash"
+    echo
+    git show -m --first-parent -p --format="" "$commit_hash"
+}
+
 main() {
     local custom_rule=""
     local print_only=false
     local show_rule_path=false
     local diff_only=false
-    local commit_mode=false
+    local mode="staged"
     local commit_target=""
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -c|--commit)
-                commit_mode=true
+                mode="commit"
                 if [[ $# -ge 2 && ( ! "$2" =~ ^- || "$2" =~ ^-[0-9]+$ ) ]]; then
                     commit_target="$2"
                     shift 2
@@ -164,7 +237,7 @@ main() {
                 fi
                 ;;
             --commit=*)
-                commit_mode=true
+                mode="commit"
                 commit_target="${1#*=}"
                 shift
                 ;;
@@ -238,66 +311,16 @@ main() {
     fi
 
     local commit_hash=""
-    if $commit_mode; then
-        if ! git rev-parse --verify HEAD &>/dev/null; then
-            echo -e "${RED}Error:${RESET} No commits found in repository." >&2
-            exit 1
-        fi
-
-        if [[ "$commit_target" =~ ^[0-9]{1,6}$ ]]; then
-            # Short all-digit values are positions counting back from HEAD
-            if ! [[ "$commit_target" =~ ^[1-9][0-9]*$ ]]; then
-                echo -e "${RED}Error:${RESET} Invalid commit position '$commit_target'. Must be a positive integer (e.g. 1, 2, 3)." >&2
-                exit 1
-            fi
-
-            local total_commits
-            total_commits=$(git rev-list --first-parent --count HEAD 2>/dev/null)
-            if [ "$commit_target" -gt "$total_commits" ]; then
-                local commit_noun="commits"
-                if [ "$total_commits" -eq 1 ]; then
-                    commit_noun="commit"
-                fi
-                echo -e "${RED}Error:${RESET} Commit at position $commit_target does not exist (branch only has $total_commits $commit_noun)." >&2
-                exit 1
-            fi
-
-            local offset=$((commit_target - 1))
-            commit_hash=$(git rev-parse --verify "HEAD~${offset}^{commit}" 2>/dev/null)
-            if [ -z "$commit_hash" ]; then
-                echo -e "${RED}Error:${RESET} Failed to resolve commit at position $commit_target." >&2
-                exit 1
-            fi
-        else
-            # Anything else is treated as a hash or ref
-            if [[ -z "$commit_target" || "$commit_target" == -* ]]; then
-                echo -e "${RED}Error:${RESET} Invalid commit '$commit_target'. Use a position (e.g. 1, 2, 3) or a commit hash." >&2
-                exit 1
-            fi
-
-            commit_hash=$(git rev-parse --verify --quiet "${commit_target}^{commit}" 2>/dev/null)
-            if [ -z "$commit_hash" ]; then
-                echo -e "${RED}Error:${RESET} Commit '$commit_target' not found." >&2
-                exit 1
-            fi
-        fi
-    else
-        if git diff --cached --quiet; then
-            echo -e "${RED}Nothing staged.${RESET} Use 'git add' to stage your changes first." >&2
-            exit 1
-        fi
-    fi
+    case "$mode" in
+        staged) require_staged || exit 1 ;;
+        commit) commit_hash=$(resolve_commit "$commit_target") || exit 1 ;;
+    esac
 
     stream_content() {
-        if $commit_mode; then
-            git show -m --first-parent --stat --format="" "$commit_hash"
-            echo
-            git show -m --first-parent -p --format="" "$commit_hash"
-        else
-            git diff --cached --stat
-            echo
-            git diff --cached
-        fi
+        case "$mode" in
+            staged) stream_staged ;;
+            commit) stream_commit "$commit_hash" ;;
+        esac
         echo
         echo
         if ! $diff_only; then
