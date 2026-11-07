@@ -457,6 +457,40 @@ setup_diff_only_no_rule() {
     # Intentionally NO rule files anywhere — --diff-only should not need them
 }
 
+setup_repo_with_commits() {
+    setup_git_repo
+    echo "content one" > file1.txt
+    git add file1.txt
+    git commit -m "commit one" -q
+
+    echo "content two" > file2.txt
+    git add file2.txt
+    git commit -m "commit two" -q
+
+    echo "content three" > file3.txt
+    git add file3.txt
+    git commit -m "commit three" -q
+
+    mkdir -p "$XDG_CONFIG_HOME/gdiff"
+    echo "COMMIT TEST RULE" > "$XDG_CONFIG_HOME/gdiff/rule.txt"
+}
+
+setup_empty_git_repo() {
+    setup_git_repo
+    mkdir -p "$XDG_CONFIG_HOME/gdiff"
+    echo "TEST RULE" > "$XDG_CONFIG_HOME/gdiff/rule.txt"
+}
+
+setup_repo_with_merge() {
+    setup_repo_with_commits
+    git checkout -q -b feature
+    echo "feature content" > feature.txt
+    git add feature.txt
+    git commit -m "feature commit" -q
+    git checkout -q -
+    git merge --no-ff feature -m "merge feature" -q
+}
+
 # RUNNING TESTS
 
 for SHELL_UNDER_TEST in bash fish; do
@@ -546,6 +580,26 @@ for SHELL_UNDER_TEST in bash fish; do
     run_test_case "16d" "Diff-only works without any rule file" "setup_diff_only_no_rule" "copied" "-d" "" 0 "Diff copied to clipboard" "" "myfile.txt"
     run_test_case "16e" "Diff-only clipboard excludes rule content" "setup_staged_changes" "copied" "-d" "" 0 "Diff copied to clipboard" "" "modified content"
     run_test_case "16f" "Diff-only print excludes rule content" "setup_staged_changes" "copied" "-d -p" "" 0 "modified content" "" ""
+
+    # -c / --commit flag
+    run_test_case "17a" "Commit diff default (-c) copies to clipboard" "setup_repo_with_commits" "copied" "-c" "" 0 "Diff + rule copied to clipboard" "" "file3.txt"
+    run_test_case "17b" "Commit diff position 1 (-c 1) copies to clipboard" "setup_repo_with_commits" "copied" "-c 1" "" 0 "Diff + rule copied to clipboard" "" "file3.txt"
+    run_test_case "17c" "Commit diff position 2 (-c 2) copies to clipboard" "setup_repo_with_commits" "copied" "-c 2" "" 0 "Diff + rule copied to clipboard" "" "file2.txt"
+    run_test_case "17d" "Commit diff root commit (-c 3) copies to clipboard" "setup_repo_with_commits" "copied" "-c 3" "" 0 "Diff + rule copied to clipboard" "" "file1.txt"
+    run_test_case "17e" "Commit diff with print mode (--commit 2 -p)" "setup_repo_with_commits" "copied" "--commit 2 -p" "" 0 "file2.txt" "" ""
+    run_test_case "17f" "Commit diff with diff-only (-c 2 -d)" "setup_repo_with_commits" "copied" "-c 2 -d" "" 0 "Diff copied to clipboard" "" "file2.txt"
+    run_test_case "17g" "Commit diff empty repo (-c)" "setup_empty_git_repo" "copied" "-c" "" 1 "" "Error: No commits found in repository." ""
+    run_test_case "17h" "Commit diff empty repo (-c 1)" "setup_empty_git_repo" "copied" "-c 1" "" 1 "" "Error: No commits found in repository." ""
+    run_test_case "17i" "Commit diff position out of bounds (-c 50)" "setup_repo_with_commits" "copied" "-c 50" "" 1 "" "Error: Commit at position 50 does not exist (branch only has 3 commits)." ""
+    run_test_case "17j" "Commit diff invalid position (-c 0)" "setup_repo_with_commits" "copied" "-c 0" "" 1 "" "Error: Invalid commit position '0'. Must be a positive integer (e.g. 1, 2, 3)." ""
+    run_test_case "17k" "Commit diff invalid non-numeric (-c abc)" "setup_repo_with_commits" "copied" "-c abc" "" 1 "" "Error: Invalid commit position 'abc'. Must be a positive integer (e.g. 1, 2, 3)." ""
+    run_test_case "17l" "Commit diff with equals syntax (--commit=2 -p)" "setup_repo_with_commits" "copied" "--commit=2 -p" "" 0 "file2.txt" "" ""
+    run_test_case "17m" "Commit diff default immediately followed by print (-c -p)" "setup_repo_with_commits" "copied" "-c -p" "" 0 "file3.txt" "" ""
+    run_test_case "17n" "Commit diff negative number (-c -1)" "setup_repo_with_commits" "copied" "-c -1" "" 1 "" "Error: Invalid commit position '-1'. Must be a positive integer (e.g. 1, 2, 3)." ""
+    run_test_case "17o" "Commit diff empty equals (--commit=)" "setup_repo_with_commits" "copied" "--commit=" "" 1 "" "Error: Invalid commit position ''. Must be a positive integer (e.g. 1, 2, 3)." ""
+    run_test_case "17p" "Commit diff huge number (-c 99999999999999999999)" "setup_repo_with_commits" "copied" "-c 99999999999999999999" "" 1 "" "Error: Invalid commit position '99999999999999999999'. Must be a positive integer (e.g. 1, 2, 3)." ""
+    run_test_case "17q" "Commit diff of a merge shows merged changes (-c -p)" "setup_repo_with_merge" "copied" "-c -p" "" 0 "feature.txt" "" ""
+    run_test_case "17r" "Position beyond first-parent chain (-c 5)" "setup_repo_with_merge" "copied" "-c 5" "" 1 "" "Error: Commit at position 5 does not exist (branch only has 4 commits)." ""
 
 done
 
