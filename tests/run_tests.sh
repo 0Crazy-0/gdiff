@@ -459,17 +459,19 @@ setup_diff_only_no_rule() {
 
 setup_repo_with_commits() {
     setup_git_repo
+    # Fixed, coordinated dates keep `git log` / rev-list ordering deterministic
+    # regardless of when the tests run: commit one < two < three.
     echo "content one" > file1.txt
     git add file1.txt
-    git commit -m "commit one" -q
+    GIT_AUTHOR_DATE="2030-01-01 10:00:00 +0000" GIT_COMMITTER_DATE="2030-01-01 10:00:00 +0000" git commit -m "commit one" -q
 
     echo "content two" > file2.txt
     git add file2.txt
-    git commit -m "commit two" -q
+    GIT_AUTHOR_DATE="2030-01-01 10:01:00 +0000" GIT_COMMITTER_DATE="2030-01-01 10:01:00 +0000" git commit -m "commit two" -q
 
     echo "content three" > file3.txt
     git add file3.txt
-    git commit -m "commit three" -q
+    GIT_AUTHOR_DATE="2030-01-01 10:02:00 +0000" GIT_COMMITTER_DATE="2030-01-01 10:02:00 +0000" git commit -m "commit three" -q
 
     mkdir -p "$XDG_CONFIG_HOME/gdiff"
     echo "COMMIT TEST RULE" > "$XDG_CONFIG_HOME/gdiff/rule.txt"
@@ -483,14 +485,15 @@ setup_empty_git_repo() {
 
 setup_repo_with_merge() {
     setup_repo_with_commits
-    # Give the feature commit an explicit later date so its position in
-    # `git log` order is deterministic (through the merge, it is position 2).
+    # Coordinated fixed dates keep `git log` / rev-list ordering deterministic
+    # regardless of run time: feature commit > commit three, merge > feature,
+    # so the merge is position 1 and the feature commit is position 2.
     git checkout -q -b feature
     echo "feature content" > feature.txt
     git add feature.txt
-    GIT_AUTHOR_DATE="2030-01-01 10:00:00 +0000" GIT_COMMITTER_DATE="2030-01-01 10:00:00 +0000" git commit -m "feature commit" -q
+    GIT_AUTHOR_DATE="2030-01-01 10:05:00 +0000" GIT_COMMITTER_DATE="2030-01-01 10:05:00 +0000" git commit -m "feature commit" -q
     git checkout -q -
-    git merge --no-ff feature -m "merge feature" -q
+    GIT_AUTHOR_DATE="2030-01-01 10:10:00 +0000" GIT_COMMITTER_DATE="2030-01-01 10:10:00 +0000" git merge --no-ff feature -m "merge feature" -q
 }
 
 setup_repo_with_tag() {
