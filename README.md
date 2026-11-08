@@ -201,7 +201,37 @@ gdiff -c v1.2.0
 gdiff -c 2 -d -p
 ```
 
-> **Note on merge commits:** Numeric positions count in `git log` order, so every reachable commit counts, including merge commits and the commits of merged branches. Regardless of position, for merge commits `gdiff` generates the diff against the first parent (the target branch that received the merge), so the diff shows all the changes introduced by the merge as a whole.
+> **Note on merge commits:** Numeric positions count in `git log` order, so every reachable commit counts, including merge commits and the commits of merged branches. Regardless of position, for merge commits `gdiff` generates the diff against the first parent (the target branch that received the merge), so the diff shows all the changes introduced by the merge as a whole. The same position semantics apply to `--message`.
+
+### How to View an Existing Commit Message
+If you only need to recall the exact message of a past commit (to reuse it, review it, or fix a likely typo) instead of its diff, use the `-m` or `--message` flag. It accepts the same kind of reference as `--commit` (a position, commit hash, or ref) and prints the message to the terminal exactly as it was written:
+
+```bash
+# Print the message of the latest commit (HEAD)
+gdiff -m
+
+# Print the message of the second most recent commit
+gdiff -m 2
+
+# Print the message of a specific commit by hash or ref
+gdiff -m a1b2c3d
+gdiff -m v1.2.0
+
+# Add a header with hash, author and date above the message
+gdiff -m 2 -i
+```
+
+*Output of `gdiff -m -i`:*
+```text
+Commit: a1b2c3d4e5f6...
+Short:  a1b2c3d
+Author: Your Name <you@example.com>
+Date:   Sat Nov 7 20:35:55 2026 -0500
+
+feat(core): add authentication gateway
+```
+
+> **Note:** `--message` prints to the terminal and never touches the clipboard or your rule file, so it skips the rule resolution entirely. It cannot be combined with `-c`, `-r`, `-p`, `-d`, `--restore-rule` or `--rule-path`.
 
 ---
 
@@ -212,6 +242,8 @@ gdiff -c 2 -d -p
 | Flag | Long Option | Description |
 | :--- | :--- | :--- |
 | `-c [REF]` | `--commit [REF]` | Diff of a commit: position, hash or ref (default: `1` = latest commit `HEAD`). Positions count from the latest commit in `git log` order, including merge commits and the commits of merged branches. |
+| `-m [REF]` | `--message [REF]` | Print the commit message of a commit to the terminal: position, hash or ref (default: `1` = latest commit `HEAD`). Prints exactly as written, without using any rule or the clipboard. |
+| `-i` | `--info` | With `--message`: prepend a header with the commit hash, short hash, author and date. |
 | `-r <file>` | `--rule <file>` | Path to a custom rules file (`.txt` or `.md`) to append instead of the default. |
 | `-p` | `--print` | Stream the output directly to `stdout` rather than saving it to the clipboard. |
 | `-d` | `--diff-only` | Copy only the diff to clipboard, without appending the rule. |
