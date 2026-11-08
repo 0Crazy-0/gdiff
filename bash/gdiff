@@ -169,14 +169,16 @@ resolve_commit() {
     fi
 
     if [[ "$commit_target" =~ ^[0-9]{1,6}$ ]]; then
-        # Short all-digit values are positions counting back from HEAD
+        # Short all-digit values are positions in git log order, counting from
+        # HEAD. Every reachable commit counts, including merge commits and the
+        # commits of merged branches.
         if ! [[ "$commit_target" =~ ^[1-9][0-9]*$ ]]; then
             echo -e "${RED}Error:${RESET} Invalid commit position '$commit_target'. Must be a positive integer (e.g. 1, 2, 3)." >&2
             return 1
         fi
 
         local total_commits
-        total_commits=$(git rev-list --first-parent --count HEAD 2>/dev/null)
+        total_commits=$(git rev-list --count HEAD 2>/dev/null)
         if [ "$commit_target" -gt "$total_commits" ]; then
             local commit_noun="commits"
             if [ "$total_commits" -eq 1 ]; then
@@ -186,8 +188,8 @@ resolve_commit() {
             return 1
         fi
 
-        local offset=$((commit_target - 1))
-        commit_hash=$(git rev-parse --verify "HEAD~${offset}^{commit}" 2>/dev/null)
+        local skip=$((commit_target - 1))
+        commit_hash=$(git rev-list --skip="$skip" --max-count=1 HEAD 2>/dev/null)
         if [ -z "$commit_hash" ]; then
             echo -e "${RED}Error:${RESET} Failed to resolve commit at position $commit_target." >&2
             return 1
