@@ -36,6 +36,8 @@ function Show-Help {
     Write-Host ""
     Write-Host "OPTIONS"
     Write-Host "  -c, --commit [REF]  Diff of a commit: position, hash or ref (default: 1 = latest)"
+    Write-Host "  -m, --message [REF] Print the commit message: position, hash or ref (default: 1 = latest)"
+    Write-Host "  -i, --info          With --message: add a header with hash, author and date"
     Write-Host "  -r, --rule <file>   Use a custom rule file (.txt or .md)"
     Write-Host "  -p, --print         Print the output instead of copying to clipboard"
     Write-Host "  -d, --diff-only     Copy only the diff, without the rule"
@@ -43,6 +45,10 @@ function Show-Help {
     Write-Host "  --rule-path         Show which rule file is being used"
     Write-Host "  -v, --version       Show version"
     Write-Host "  -h, --help          Show this help"
+    Write-Host ""
+    Write-Host "NOTES" -ForegroundColor White
+    Write-Host "  --message prints to the terminal, does not use a rule, and cannot be"
+    Write-Host "  combined with -c, -r, -p, -d, --restore-rule or --rule-path."
     Write-Host ""
     Write-Host "RULE PRECEDENCE" -ForegroundColor White
     Write-Host "  1. --rule <file>                        (highest)"
@@ -194,6 +200,35 @@ function Get-CommitDiff {
     git show -m --first-parent -p --format="" $CommitHash
 }
 
+# Mode: message
+# Prints the commit message exactly as it was written, without indentation.
+# With WithInfo=true, a header (hash, short hash, author, date) goes first.
+function Show-CommitMessage {
+    param(
+        [string]$CommitHash,
+        [bool]$WithInfo
+    )
+
+    $message = (git log -1 --format=%B $CommitHash) -join "`n"
+    if ($LASTEXITCODE -ne 0) {
+        exit 1
+    }
+
+    if ($WithInfo) {
+        git log -1 --date=default `
+            --format="Commit: %H%nShort:  %h%nAuthor: %an <%ae>%nDate:   %ad" `
+            $CommitHash
+        if ($LASTEXITCODE -ne 0) {
+            exit 1
+        }
+        ""
+    }
+
+    # Command substitution in bash strips trailing newlines; mirror that so the
+    # message ends with exactly one newline.
+    Write-Output $message.TrimEnd("`r", "`n")
+}
+
 # Output
 # Emits the diff of the active mode followed by the rule (if any), line by line.
 function Get-GdiffContent {
@@ -218,7 +253,11 @@ function Main {
     $customRule = ""
     $printOnly = $false
     $showRulePath = $false
+    $restoreRule = $false
     $diffOnly = $false
+    $commitFlag = $false
+    $messageFlag = $false
+    $info = $false
     $mode = "staged"
     $commitTarget = ""
 
@@ -228,6 +267,7 @@ function Main {
         switch -Regex ($arg) {
             '^(--commit|-c)$' {
                 $mode = "commit"
+                $commitFlag = $true
                 if (($i + 1) -lt $args.Count) {
                     $nextArg = "$($args[$i + 1])"
                     if (($nextArg -notmatch '^-') -or ($nextArg -match '^-[0-9]+$')) {
@@ -242,10 +282,34 @@ function Main {
             }
             '^--commit=(.*)$' {
                 $mode = "commit"
+                $commitFlag = $true
                 $commitTarget = $Matches[1]
                 $i++
                 continue
             }
+            '^(--message|-m)$' {
+                $mode = "message"
+                $messageFlag = $true
+                if (($i + 1) -lt $args.Count) {
+                    $nextArg = "$($args[$i + 1])"
+                    if (($nextArg -notmatch '^-') -or ($nextArg -match '^-[0-9]+$')) {
+                        $commitTarget = $nextArg
+                        $i += 2
+                        continue
+                    }
+                }
+                $commitTarget = "1"
+                $i++
+                continue
+            }
+            '^--message=(.*)$' {
+                $mode = "message"
+                $messageFlag = $true
+                $commitTarget = $Matches[1]
+                $i++
+                continue
+            }
+            '^(--info|-i)$' { $info = $true; $i++; continue }
             '^(--rule|-r)$' {
                 if ($i -ge ($args.Count - 1)) {
                     [Console]::Error.WriteLine("Error: Option '$arg' requires an argument.")
@@ -257,7 +321,7 @@ function Main {
             }
             '^(--print|-p)$' { $printOnly = $true; $i++; continue }
             '^(--diff-only|-d)$' { $diffOnly = $true; $i++; continue }
-            '^--restore-rule$' { exit (Restore-Rule) }
+            '^--restore-rule$' { $restoreRule = $true; $i++; continue }
             '^--rule-path$' { $showRulePath = $true; $i++; continue }
             '^(--version|-v)$' { Write-Host "gdiff v$script:VERSION"; exit 0 }
             '^(--help|-h)$' { Show-Help; exit 0 }
@@ -269,8 +333,36 @@ function Main {
         }
     }
 
+    # Validate flag combinations before doing anything
+    if ($messageFlag) {
+        $conflicts = @()
+        if ($commitFlag) { $conflicts += "--commit" }
+        if ($customRule) { $conflicts += "--rule" }
+        if ($printOnly) { $conflicts += "--print" }
+        if ($diffOnly) { $conflicts += "--diff-only" }
+        if ($restoreRule) { $conflicts += "--restore-rule" }
+        if ($showRulePath) { $conflicts += "--rule-path" }
+
+        if ($conflicts.Count -gt 0) {
+            [Console]::Error.WriteLine(("Error: --message cannot be combined with {0}." -f ($conflicts -join ", ")))
+            exit 1
+        }
+    }
+
+    if ($info -and -not $messageFlag) {
+        [Console]::Error.WriteLine("Error: --info can only be used with --message.")
+        exit 1
+    }
+
+    if ($restoreRule) {
+        exit (Restore-Rule)
+    }
+
+    # Message mode never uses a rule; diff-only does not either
+    $needsRule = -not $diffOnly -and -not $messageFlag
+
     $ruleFile = ""
-    if (-not $diffOnly) {
+    if ($needsRule) {
         $ruleFile = Resolve-Rule -CustomRule $customRule
     }
 
@@ -279,7 +371,7 @@ function Main {
         exit 0
     }
 
-    if (-not $diffOnly) {
+    if ($needsRule) {
         Invoke-LazyInit
         if (-not (Test-Path $ruleFile) -or (Get-Item $ruleFile).Length -eq 0) {
             [Console]::Error.WriteLine("Error: Rule file is empty: $ruleFile")
@@ -303,6 +395,12 @@ function Main {
     switch ($mode) {
         'staged' { Assert-Staged }
         'commit' { $commitHash = Resolve-Commit -CommitTarget $commitTarget }
+        'message' { $commitHash = Resolve-Commit -CommitTarget $commitTarget }
+    }
+
+    if ($mode -eq 'message') {
+        Show-CommitMessage -CommitHash $commitHash -WithInfo $info
+        exit 0
     }
 
     if ($printOnly) {

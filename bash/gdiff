@@ -53,6 +53,8 @@ show_help() {
     echo ""
     echo -e "${BOLD}OPTIONS${RESET}"
     echo "  -c, --commit [REF]  Diff of a commit: position, hash or ref (default: 1 = latest)"
+    echo "  -m, --message [REF] Print the commit message: position, hash or ref (default: 1 = latest)"
+    echo "  -i, --info          With --message: add a header with hash, author and date"
     echo "  -r, --rule <file>   Use a custom rule file (.txt or .md)"
     echo "  -p, --print         Print the output instead of copying to clipboard"
     echo "  -d, --diff-only     Copy only the diff, without the rule"
@@ -60,6 +62,10 @@ show_help() {
     echo "  --rule-path         Show which rule file is being used"
     echo "  -v, --version       Show version"
     echo "  -h, --help          Show this help"
+    echo ""
+    echo -e "${BOLD}NOTES${RESET}"
+    echo "  --message prints to the terminal, does not use a rule, and cannot be"
+    echo "  combined with -c, -r, -p, -d, --restore-rule or --rule-path."
     echo ""
     echo -e "${BOLD}RULE PRECEDENCE${RESET}"
     echo "  1. --rule <file>                 (highest)"
@@ -218,11 +224,36 @@ stream_commit() {
     git show -m --first-parent -p --format="" "$commit_hash"
 }
 
+# Mode: message
+# Prints the commit message exactly as it was written, without indentation.
+# With with_info=true, a header (hash, short hash, author, date) goes first.
+print_commit_message() {
+    local commit_hash="$1"
+    local with_info="$2"
+    local message
+
+    message=$(git log -1 --format=%B "$commit_hash") || return 1
+
+    if [ "$with_info" = true ]; then
+        git log -1 --date=default \
+            --format="Commit: %H%nShort:  %h%nAuthor: %an <%ae>%nDate:   %ad" \
+            "$commit_hash" || return 1
+        echo
+    fi
+
+    # Command substitution already stripped trailing blank lines
+    printf '%s\n' "$message"
+}
+
 main() {
     local custom_rule=""
     local print_only=false
     local show_rule_path=false
+    local restore_rule=false
     local diff_only=false
+    local commit_flag=false
+    local message_flag=false
+    local info=false
     local mode="staged"
     local commit_target=""
 
@@ -230,6 +261,7 @@ main() {
         case "$1" in
             -c|--commit)
                 mode="commit"
+                commit_flag=true
                 if [[ $# -ge 2 && ( ! "$2" =~ ^- || "$2" =~ ^-[0-9]+$ ) ]]; then
                     commit_target="$2"
                     shift 2
@@ -240,7 +272,29 @@ main() {
                 ;;
             --commit=*)
                 mode="commit"
+                commit_flag=true
                 commit_target="${1#*=}"
+                shift
+                ;;
+            -m|--message)
+                mode="message"
+                message_flag=true
+                if [[ $# -ge 2 && ( ! "$2" =~ ^- || "$2" =~ ^-[0-9]+$ ) ]]; then
+                    commit_target="$2"
+                    shift 2
+                else
+                    commit_target="1"
+                    shift
+                fi
+                ;;
+            --message=*)
+                mode="message"
+                message_flag=true
+                commit_target="${1#*=}"
+                shift
+                ;;
+            -i|--info)
+                info=true
                 shift
                 ;;
             -r|--rule)
@@ -260,8 +314,8 @@ main() {
                 shift
                 ;;
             --restore-rule)
-                do_restore_rule
-                exit $?
+                restore_rule=true
+                shift
                 ;;
             --rule-path)
                 show_rule_path=true
@@ -283,8 +337,43 @@ main() {
         esac
     done
 
+    # Validate flag combinations before doing anything
+    if $message_flag; then
+        local conflicts=()
+        $commit_flag && conflicts+=("--commit")
+        [ -n "$custom_rule" ] && conflicts+=("--rule")
+        $print_only && conflicts+=("--print")
+        $diff_only && conflicts+=("--diff-only")
+        $restore_rule && conflicts+=("--restore-rule")
+        $show_rule_path && conflicts+=("--rule-path")
+
+        if [ ${#conflicts[@]} -gt 0 ]; then
+            local joined
+            printf -v joined '%s, ' "${conflicts[@]}"
+            joined="${joined%, }"
+            echo -e "${RED}Error:${RESET} --message cannot be combined with $joined." >&2
+            exit 1
+        fi
+    fi
+
+    if $info && ! $message_flag; then
+        echo -e "${RED}Error:${RESET} --info can only be used with --message." >&2
+        exit 1
+    fi
+
+    if $restore_rule; then
+        do_restore_rule
+        exit $?
+    fi
+
+    # Message mode never uses a rule; diff-only does not either
+    local needs_rule=true
+    if $diff_only || $message_flag; then
+        needs_rule=false
+    fi
+
     local rule_file=""
-    if ! $diff_only; then
+    if $needs_rule; then
         rule_file=$(resolve_rule "$custom_rule") || exit 1
     fi
 
@@ -293,11 +382,11 @@ main() {
         exit 0
     fi
 
-    if ! $diff_only; then
+    if $needs_rule; then
         lazy_init
     fi
 
-    if ! $diff_only && [ ! -s "$rule_file" ]; then
+    if $needs_rule && [ ! -s "$rule_file" ]; then
         echo -e "${RED}Error:${RESET} Rule file is empty: $rule_file" >&2
         echo "Please edit the file or run 'gdiff --restore-rule' to restore the default rule." >&2
         exit 1
@@ -315,8 +404,13 @@ main() {
     local commit_hash=""
     case "$mode" in
         staged) require_staged || exit 1 ;;
-        commit) commit_hash=$(resolve_commit "$commit_target") || exit 1 ;;
+        commit|message) commit_hash=$(resolve_commit "$commit_target") || exit 1 ;;
     esac
+
+    if [ "$mode" = "message" ]; then
+        print_commit_message "$commit_hash" "$info"
+        return $?
+    fi
 
     stream_content() {
         case "$mode" in
@@ -325,7 +419,7 @@ main() {
         esac
         echo
         echo
-        if ! $diff_only; then
+        if $needs_rule; then
             cat "$rule_file"
         fi
     }
