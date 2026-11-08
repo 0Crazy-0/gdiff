@@ -21,6 +21,35 @@ set -g GREEN (set_color green)
 set -g BOLD (set_color --bold)
 set -g RESET (set_color normal)
 
+# Global state (filled by parse_args)
+set -g CUSTOM_RULE ""
+set -g PRINT_ONLY false
+set -g SHOW_RULE_PATH false
+set -g RESTORE_RULE false
+set -g DIFF_ONLY false
+set -g COMMIT_FLAG false
+set -g MESSAGE_FLAG false
+set -g INFO false
+set -g MODE staged
+set -g COMMIT_TARGET ""
+set -g COMMIT_HASH ""
+set -g RULE_FILE ""
+set -g REF_SHIFT 1
+
+# Helpers
+function die
+    echo "$RED"Error:"$RESET" $argv >&2
+    exit 1
+end
+
+# Message mode never uses a rule; diff-only does not either
+function needs_rule
+    if test "$DIFF_ONLY" = true; or test "$MESSAGE_FLAG" = true
+        return 1
+    end
+    return 0
+end
+
 function detect_clipboard
     if type -q wl-copy; and test -n "$WAYLAND_DISPLAY"
         echo "wl-copy"
@@ -231,104 +260,68 @@ function print_commit_message
     printf '%s\n' "$message"
 end
 
-function stream_content
-    set -l mode "$argv[1]"
-    set -l rule_file "$argv[2]"
-    set -l commit_hash "$argv[3]"
-    switch "$mode"
-        case staged
-            stream_staged
-        case commit
-            stream_commit "$commit_hash"
+# Argument parsing
+
+# If the next argument looks like a ref (not an option), consume it.
+# Usage: parse_ref_arg $argv[$i..-1]   (where $argv[1] is the flag itself)
+function parse_ref_arg
+    if test (count $argv) -ge 2
+        set -l next_val "$argv[2]"
+        if not string match -q -- '-*' "$next_val"; or string match -qr -- '^-[0-9]+$' "$next_val"
+            set -g COMMIT_TARGET "$next_val"
+            set -g REF_SHIFT 2
+            return
+        end
     end
-    echo
-    echo
-    if test -n "$rule_file"
-        cat "$rule_file"
-    end
+    set -g COMMIT_TARGET "1"
+    set -g REF_SHIFT 1
 end
 
-function main
-    set -l custom_rule ""
-    set -l print_only false
-    set -l show_rule_path false
-    set -l restore_rule false
-    set -l diff_only false
-    set -l commit_flag false
-    set -l message_flag false
-    set -l info false
-    set -l mode staged
-    set -l commit_target ""
-
+function parse_args
     set -l i 1
     while test $i -le (count $argv)
         switch $argv[$i]
             case -c --commit
-                set mode commit
-                set commit_flag true
-                set -l next_i (math $i + 1)
-                if test $next_i -le (count $argv)
-                    set -l next_val $argv[$next_i]
-                    if not string match -q -- '-*' "$next_val"; or string match -qr -- '^-[0-9]+$' "$next_val"
-                        set commit_target "$next_val"
-                        set i (math $i + 2)
-                    else
-                        set commit_target "1"
-                        set i (math $i + 1)
-                    end
-                else
-                    set commit_target "1"
-                    set i (math $i + 1)
-                end
+                set -g MODE commit
+                set -g COMMIT_FLAG true
+                parse_ref_arg $argv[$i..-1]
+                set i (math $i + $REF_SHIFT)
             case '--commit=*'
-                set mode commit
-                set commit_flag true
-                set commit_target (string replace -r '^--commit=' '' -- "$argv[$i]")
+                set -g MODE commit
+                set -g COMMIT_FLAG true
+                set -g COMMIT_TARGET (string replace -r '^--commit=' '' -- "$argv[$i]")
                 set i (math $i + 1)
             case -m --message
-                set mode message
-                set message_flag true
-                set -l next_i (math $i + 1)
-                if test $next_i -le (count $argv)
-                    set -l next_val $argv[$next_i]
-                    if not string match -q -- '-*' "$next_val"; or string match -qr -- '^-[0-9]+$' "$next_val"
-                        set commit_target "$next_val"
-                        set i (math $i + 2)
-                    else
-                        set commit_target "1"
-                        set i (math $i + 1)
-                    end
-                else
-                    set commit_target "1"
-                    set i (math $i + 1)
-                end
+                set -g MODE message
+                set -g MESSAGE_FLAG true
+                parse_ref_arg $argv[$i..-1]
+                set i (math $i + $REF_SHIFT)
             case '--message=*'
-                set mode message
-                set message_flag true
-                set commit_target (string replace -r '^--message=' '' -- "$argv[$i]")
+                set -g MODE message
+                set -g MESSAGE_FLAG true
+                set -g COMMIT_TARGET (string replace -r '^--message=' '' -- "$argv[$i]")
                 set i (math $i + 1)
             case -i --info
-                set info true
+                set -g INFO true
                 set i (math $i + 1)
             case -r --rule
                 set -l next_i (math $i + 1)
                 if test $next_i -gt (count $argv)
-                    echo "$RED"Error:"$RESET Option '$argv[$i]' requires an argument." >&2
-                    exit 1
+                    die "Option '$argv[$i]' requires an argument."
                 end
-                set custom_rule $argv[$next_i]
+                set -g CUSTOM_RULE "$argv[$next_i]"
                 set i (math $i + 2)
             case -p --print
-                set print_only true
+                set -g PRINT_ONLY true
                 set i (math $i + 1)
             case -d --diff-only
-                set diff_only true
+                set -g DIFF_ONLY true
                 set i (math $i + 1)
             case --restore-rule
-                set restore_rule true
+                set -g RESTORE_RULE true
                 set i (math $i + 1)
             case --rule-path
-                set show_rule_path true
+                set -g SHOW_RULE_PATH true
                 set i (math $i + 1)
             case -v --version
                 echo "gdiff v$VERSION"
@@ -342,91 +335,91 @@ function main
                 exit 1
         end
     end
+end
 
-    # Validate flag combinations before doing anything
-    if test "$message_flag" = true
+# Validate flag combinations before doing anything
+function validate_flags
+    if test "$MESSAGE_FLAG" = true
         set -l conflicts
-        test "$commit_flag" = true; and set -a -- conflicts --commit
-        test -n "$custom_rule"; and set -a -- conflicts --rule
-        test "$print_only" = true; and set -a -- conflicts --print
-        test "$diff_only" = true; and set -a -- conflicts --diff-only
-        test "$restore_rule" = true; and set -a -- conflicts --restore-rule
-        test "$show_rule_path" = true; and set -a -- conflicts --rule-path
+        test "$COMMIT_FLAG" = true; and set -a -- conflicts --commit
+        test -n "$CUSTOM_RULE"; and set -a -- conflicts --rule
+        test "$PRINT_ONLY" = true; and set -a -- conflicts --print
+        test "$DIFF_ONLY" = true; and set -a -- conflicts --diff-only
+        test "$RESTORE_RULE" = true; and set -a -- conflicts --restore-rule
+        test "$SHOW_RULE_PATH" = true; and set -a -- conflicts --rule-path
 
         if test (count $conflicts) -gt 0
             set -l joined (string join ", " -- $conflicts)
-            echo "$RED"Error:"$RESET --message cannot be combined with $joined." >&2
-            exit 1
+            die "--message cannot be combined with $joined."
         end
     end
 
-    if test "$info" = true; and test "$message_flag" = false
-        echo "$RED"Error:"$RESET --info can only be used with --message." >&2
+    if test "$INFO" = true; and test "$MESSAGE_FLAG" = false
+        die "--info can only be used with --message."
+    end
+end
+
+# Setup steps used by main
+
+# Message mode never uses a rule; diff-only does not either
+function select_rule
+    needs_rule; or return 0
+    set -g RULE_FILE (resolve_rule "$CUSTOM_RULE")
+    if test $status -ne 0
         exit 1
     end
+end
 
-    if test "$restore_rule" = true
-        do_restore_rule
-        exit $status
-    end
-
-    # Message mode never uses a rule; diff-only does not either
-    set -l needs_rule true
-    if test "$diff_only" = true; or test "$message_flag" = true
-        set needs_rule false
-    end
-
-    set -l rule_file ""
-    if test "$needs_rule" = true
-        set rule_file (resolve_rule "$custom_rule")
-        if test $status -ne 0
-            exit 1
-        end
-    end
-
-    if test "$show_rule_path" = true
-        echo "$rule_file"
-        exit 0
-    end
-
-    if test "$needs_rule" = true
-        lazy_init
-    end
-
-    if test "$needs_rule" = true; and not test -s "$rule_file"
-        echo "$RED"Error:"$RESET Rule file is empty: $rule_file" >&2
+function check_rule
+    needs_rule; or return 0
+    lazy_init
+    if not test -s "$RULE_FILE"
+        echo "$RED"Error:"$RESET Rule file is empty: $RULE_FILE" >&2
         echo "Please edit the file or run 'gdiff --restore-rule' to restore the default rule." >&2
         exit 1
     end
+end
 
+function check_environment
     if not type -q git
-        echo "$RED"Error:"$RESET git is not installed." >&2
-        exit 1
+        die "git is not installed."
     end
 
     if not git rev-parse --git-dir >/dev/null 2>&1
-        echo "$RED"Error:"$RESET Not inside a git repository." >&2
-        exit 1
+        die "Not inside a git repository."
     end
+end
 
-    set -l commit_hash ""
-    switch "$mode"
+function resolve_target
+    switch "$MODE"
         case staged
             require_staged; or exit 1
         case commit message
-            set commit_hash (resolve_commit "$commit_target")
+            set -g COMMIT_HASH (resolve_commit "$COMMIT_TARGET")
             if test $status -ne 0
                 exit 1
             end
     end
+end
 
-    if test "$mode" = message
-        print_commit_message "$commit_hash" "$info"
-        return $status
+# Output
+function emit_content
+    switch "$MODE"
+        case staged
+            stream_staged
+        case commit
+            stream_commit "$COMMIT_HASH"
     end
+    echo
+    echo
+    if needs_rule
+        cat "$RULE_FILE"
+    end
+end
 
-    if test "$print_only" = true
-        stream_content "$mode" "$rule_file" "$commit_hash"
+function deliver_output
+    if test "$PRINT_ONLY" = true
+        emit_content
         return 0
     end
 
@@ -438,16 +431,43 @@ function main
         exit 1
     end
 
-    if stream_content "$mode" "$rule_file" "$commit_hash" | eval "$clipboard_cmd"
-        if test "$diff_only" = true
+    if emit_content | eval "$clipboard_cmd"
+        if test "$DIFF_ONLY" = true
             echo "$GREEN"✓"$RESET Diff copied to clipboard"
         else
             echo "$GREEN"✓"$RESET Diff + rule copied to clipboard"
         end
     else
-        echo "$RED"Error:"$RESET Failed to copy to clipboard." >&2
-        exit 1
+        die "Failed to copy to clipboard."
     end
+end
+
+# Entry point
+function main
+    parse_args $argv
+    validate_flags
+
+    if test "$RESTORE_RULE" = true
+        do_restore_rule
+        exit $status
+    end
+
+    select_rule
+    if test "$SHOW_RULE_PATH" = true
+        echo "$RULE_FILE"
+        exit 0
+    end
+    check_rule
+
+    check_environment
+    resolve_target
+
+    if test "$MODE" = message
+        print_commit_message "$COMMIT_HASH" "$INFO"
+        return $status
+    end
+
+    deliver_output
 end
 
 main $argv
