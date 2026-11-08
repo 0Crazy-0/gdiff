@@ -188,7 +188,7 @@ If you want to copy or review the diff of a commit that has already been made in
 # Copy the diff of the latest commit (HEAD)
 gdiff -c
 
-# Copy the diff of the commit before the latest (2nd latest in history, HEAD~1)
+# Copy the diff of the second most recent commit (next in git log)
 gdiff -c 2
 
 # Copy the diff of a specific commit by hash
@@ -201,7 +201,7 @@ gdiff -c v1.2.0
 gdiff -c 2 -d -p
 ```
 
-> **Note on merge commits:** For merge commits, `gdiff` follows the first-parent lineage when using numeric positions (`HEAD~N`), and generates the diff against the first parent (the target branch that received the merge).
+> **Note on merge commits:** Numeric positions count in `git log` order, so every reachable commit counts, including merge commits and the commits of merged branches. Regardless of position, for merge commits `gdiff` generates the diff against the first parent (the target branch that received the merge), so the diff shows all the changes introduced by the merge as a whole.
 
 ---
 
@@ -211,7 +211,7 @@ gdiff -c 2 -d -p
 
 | Flag | Long Option | Description |
 | :--- | :--- | :--- |
-| `-c [REF]` | `--commit [REF]` | Diff of a commit: position, hash or ref (default: `1` = latest commit `HEAD`). Positions count from the latest commit, following the first parent. |
+| `-c [REF]` | `--commit [REF]` | Diff of a commit: position, hash or ref (default: `1` = latest commit `HEAD`). Positions count from the latest commit in `git log` order, including merge commits and the commits of merged branches. |
 | `-r <file>` | `--rule <file>` | Path to a custom rules file (`.txt` or `.md`) to append instead of the default. |
 | `-p` | `--print` | Stream the output directly to `stdout` rather than saving it to the clipboard. |
 | `-d` | `--diff-only` | Copy only the diff to clipboard, without appending the rule. |

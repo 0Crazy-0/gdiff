@@ -144,13 +144,15 @@ function Resolve-Commit {
     }
 
     if ($CommitTarget -match '^[0-9]{1,6}$') {
-        # Short all-digit values are positions counting back from HEAD
+        # Short all-digit values are positions in git log order, counting from
+        # HEAD. Every reachable commit counts, including merge commits and the
+        # commits of merged branches.
         if ($CommitTarget -notmatch '^[1-9][0-9]*$') {
             [Console]::Error.WriteLine("Error: Invalid commit position '$CommitTarget'. Must be a positive integer (e.g. 1, 2, 3).")
             exit 1
         }
 
-        $totalCommitsStr = git rev-list --first-parent --count HEAD 2>$null
+        $totalCommitsStr = git rev-list --count HEAD 2>$null
         $totalCommits = 0
         if ([int]::TryParse($totalCommitsStr, [ref]$totalCommits)) {
             $targetNum = [int]$CommitTarget
@@ -161,8 +163,8 @@ function Resolve-Commit {
             }
         }
 
-        $offset = ([int]$CommitTarget) - 1
-        $commitHash = (git rev-parse --verify "HEAD~$offset^{commit}" 2>$null)
+        $skip = ([int]$CommitTarget) - 1
+        $commitHash = (git rev-list --skip="$skip" --max-count=1 HEAD 2>$null)
         if (-not $commitHash) {
             [Console]::Error.WriteLine("Error: Failed to resolve commit at position $CommitTarget.")
             exit 1

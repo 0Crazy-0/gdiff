@@ -459,17 +459,19 @@ setup_diff_only_no_rule() {
 
 setup_repo_with_commits() {
     setup_git_repo
+    # Fixed, coordinated dates keep `git log` / rev-list ordering deterministic
+    # regardless of when the tests run: commit one < two < three.
     echo "content one" > file1.txt
     git add file1.txt
-    git commit -m "commit one" -q
+    GIT_AUTHOR_DATE="2030-01-01 10:00:00 +0000" GIT_COMMITTER_DATE="2030-01-01 10:00:00 +0000" git commit -m "commit one" -q
 
     echo "content two" > file2.txt
     git add file2.txt
-    git commit -m "commit two" -q
+    GIT_AUTHOR_DATE="2030-01-01 10:01:00 +0000" GIT_COMMITTER_DATE="2030-01-01 10:01:00 +0000" git commit -m "commit two" -q
 
     echo "content three" > file3.txt
     git add file3.txt
-    git commit -m "commit three" -q
+    GIT_AUTHOR_DATE="2030-01-01 10:02:00 +0000" GIT_COMMITTER_DATE="2030-01-01 10:02:00 +0000" git commit -m "commit three" -q
 
     mkdir -p "$XDG_CONFIG_HOME/gdiff"
     echo "COMMIT TEST RULE" > "$XDG_CONFIG_HOME/gdiff/rule.txt"
@@ -483,12 +485,15 @@ setup_empty_git_repo() {
 
 setup_repo_with_merge() {
     setup_repo_with_commits
+    # Coordinated fixed dates keep `git log` / rev-list ordering deterministic
+    # regardless of run time: feature commit > commit three, merge > feature,
+    # so the merge is position 1 and the feature commit is position 2.
     git checkout -q -b feature
     echo "feature content" > feature.txt
     git add feature.txt
-    git commit -m "feature commit" -q
+    GIT_AUTHOR_DATE="2030-01-01 10:05:00 +0000" GIT_COMMITTER_DATE="2030-01-01 10:05:00 +0000" git commit -m "feature commit" -q
     git checkout -q -
-    git merge --no-ff feature -m "merge feature" -q
+    GIT_AUTHOR_DATE="2030-01-01 10:10:00 +0000" GIT_COMMITTER_DATE="2030-01-01 10:10:00 +0000" git merge --no-ff feature -m "merge feature" -q
 }
 
 setup_repo_with_tag() {
@@ -604,7 +609,8 @@ for SHELL_UNDER_TEST in bash fish; do
     run_test_case "17o" "Commit diff empty equals (--commit=)" "setup_repo_with_commits" "copied" "--commit=" "" 1 "" "Error: Invalid commit ''. Use a position (e.g. 1, 2, 3) or a commit hash." ""
     run_test_case "17p" "Commit diff huge number (-c 99999999999999999999)" "setup_repo_with_commits" "copied" "-c 99999999999999999999" "" 1 "" "Error: Commit '99999999999999999999' not found." ""
     run_test_case "17q" "Commit diff of a merge shows merged changes (-c -p)" "setup_repo_with_merge" "copied" "-c -p" "" 0 "feature.txt" "" ""
-    run_test_case "17r" "Position beyond first-parent chain (-c 5)" "setup_repo_with_merge" "copied" "-c 5" "" 1 "" "Error: Commit at position 5 does not exist (branch only has 4 commits)." ""
+    run_test_case "17r" "Position beyond full history (-c 6)" "setup_repo_with_merge" "copied" "-c 6" "" 1 "" "Error: Commit at position 6 does not exist (branch only has 5 commits)." ""
+    run_test_case "17s" "Merged branch commit counted in positions (-c 2)" "setup_repo_with_merge" "copied" "-c 2 -p" "" 0 "feature.txt" "" ""
 
     run_test_case "18a" "Commit by ref (-c HEAD~1)" "setup_repo_with_commits" "copied" "-c HEAD~1" "" 0 "Diff + rule copied to clipboard" "" "file2.txt"
     run_test_case "18b" "Commit by HEAD (-c HEAD)" "setup_repo_with_commits" "copied" "-c HEAD" "" 0 "Diff + rule copied to clipboard" "" "file3.txt"
@@ -615,7 +621,8 @@ for SHELL_UNDER_TEST in bash fish; do
 
     run_test_case "19a" "6 digits is a position (-c 123456)" "setup_repo_with_commits" "copied" "-c 123456" "" 1 "" "Error: Commit at position 123456 does not exist (branch only has 3 commits)." ""
     run_test_case "19b" "7 digits is a hash (-c 1234567)" "setup_repo_with_commits" "copied" "-c 1234567" "" 1 "" "Error: Commit '1234567' not found." ""
-    run_test_case "19c" "Last position in merge chain (-c 4)" "setup_repo_with_merge" "copied" "-c 4" "" 0 "Diff + rule copied to clipboard" "" "file1.txt"
+    run_test_case "19c" "Last position in merge chain (-c 5)" "setup_repo_with_merge" "copied" "-c 5" "" 0 "Diff + rule copied to clipboard" "" "file1.txt"
+    run_test_case "19d" "Branch point after merge chain (-c 4)" "setup_repo_with_merge" "copied" "-c 4 -p" "" 0 "file2.txt" "" ""
 
 done
 

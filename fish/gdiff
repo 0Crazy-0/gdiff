@@ -157,13 +157,15 @@ function resolve_commit
     end
 
     if string match -qr -- '^[0-9]{1,6}$' "$commit_target"
-        # Short all-digit values are positions counting back from HEAD
+        # Short all-digit values are positions in git log order, counting from
+        # HEAD. Every reachable commit counts, including merge commits and the
+        # commits of merged branches.
         if not string match -qr -- '^[1-9][0-9]*$' "$commit_target"
             echo "$RED"Error:"$RESET Invalid commit position '$commit_target'. Must be a positive integer (e.g. 1, 2, 3)." >&2
             return 1
         end
 
-        set -l total_commits (git rev-list --first-parent --count HEAD 2>/dev/null)
+        set -l total_commits (git rev-list --count HEAD 2>/dev/null)
         if test "$commit_target" -gt "$total_commits"
             set -l commit_noun "commits"
             if test "$total_commits" -eq 1
@@ -173,8 +175,8 @@ function resolve_commit
             return 1
         end
 
-        set -l offset (math "$commit_target - 1")
-        set commit_hash (git rev-parse --verify "HEAD~$offset^{commit}" 2>/dev/null)
+        set -l skip (math "$commit_target - 1")
+        set commit_hash (git rev-list --skip="$skip" --max-count=1 HEAD 2>/dev/null)
         if test -z "$commit_hash"
             echo "$RED"Error:"$RESET Failed to resolve commit at position $commit_target." >&2
             return 1
