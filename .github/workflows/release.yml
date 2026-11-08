@@ -5,6 +5,7 @@ name: Release
 #   - Fedora        : COPR (build from SRPM)
 #   - Arch Linux    : AUR (pkgver bump + push to the AUR repo)
 on:
+  workflow_dispatch:
   push:
     tags:
       - "v*"
