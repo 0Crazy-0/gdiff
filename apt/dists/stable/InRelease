@@ -1,0 +1,51 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Architectures: amd64 arm64
+Codename: stable
+Components: main
+Date: Sun, 08 Nov 2026 04:22:50 +0000
+Description: gdiff apt repository
+Label: gdiff
+Origin: gdiff
+Suite: stable
+MD5Sum:
+ 3adde4b94a3b1356b9bfb15b8d688633              174 Release
+ 9c76c84a08f913e630da5336e4bcefc9              788 main/binary-amd64/Packages
+ 40e614ea23e9cea5ea5ec5fa3e85b0a6              551 main/binary-amd64/Packages.gz
+ 9c76c84a08f913e630da5336e4bcefc9              788 main/binary-arm64/Packages
+ 40e614ea23e9cea5ea5ec5fa3e85b0a6              551 main/binary-arm64/Packages.gz
+SHA1:
+ 0d5ef2f412edde92f051ce2822b6fea7479c198f              174 Release
+ 06dc737ebd09f0c05c9ce5e1c71c13a941d6b0f3              788 main/binary-amd64/Packages
+ f8e1072336d715cffb20c0c41f305e73b54d8ef3              551 main/binary-amd64/Packages.gz
+ 06dc737ebd09f0c05c9ce5e1c71c13a941d6b0f3              788 main/binary-arm64/Packages
+ f8e1072336d715cffb20c0c41f305e73b54d8ef3              551 main/binary-arm64/Packages.gz
+SHA256:
+ 355ff2a172c9a4f8d07c7410f6f878d7244db291d61e1d45bb6e65f2cbe0df58              174 Release
+ 9336a8f6e278b09157cc58435e84472ae23b35da33edc829679e584894e82e2a              788 main/binary-amd64/Packages
+ e108bff092d510d40c2c85bedad68b335ece5544a165ff3058b3e03d73e9541f              551 main/binary-amd64/Packages.gz
+ 9336a8f6e278b09157cc58435e84472ae23b35da33edc829679e584894e82e2a              788 main/binary-arm64/Packages
+ e108bff092d510d40c2c85bedad68b335ece5544a165ff3058b3e03d73e9541f              551 main/binary-arm64/Packages.gz
+SHA512:
+ 9d95d7fee759ce02c8f52ac00a584f6b9fcb309094cd70e9794e86be95ca5c3a45b5425928962ac9eb490bdc0d2afd65b7e96e38c953f30062e43269a7bec7e3              174 Release
+ 52ddfa8d80b56aadf74df59ac42b806d87f5e6ec87a9cbbeb7bb567e9353b39a34c49810bbbff41dce2aa5dd74a04a36189c992a982a5362283b7975e6579293              788 main/binary-amd64/Packages
+ 69dbc738a3403db674ce3f809e9f50e0aca684145a093d1a5d0ff67a6cdd47a95f5775f3805f3afa4d0aba1d61a85bf17edf33ab633154ba4e12cb368f195168              551 main/binary-amd64/Packages.gz
+ 52ddfa8d80b56aadf74df59ac42b806d87f5e6ec87a9cbbeb7bb567e9353b39a34c49810bbbff41dce2aa5dd74a04a36189c992a982a5362283b7975e6579293              788 main/binary-arm64/Packages
+ 69dbc738a3403db674ce3f809e9f50e0aca684145a093d1a5d0ff67a6cdd47a95f5775f3805f3afa4d0aba1d61a85bf17edf33ab633154ba4e12cb368f195168              551 main/binary-arm64/Packages.gz
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCgAdFiEEGUhuTVsK2zJVTDzffEAn1rh+WYYFAmrv+RoACgkQfEAn1rh+
+WYbQzBAAtt3eJ1spOSqfDepACVN1qA3iaFoQJ6ocaXWd0Wbsjzu9p61xBbeWf5V1
+IJct6Waa0rhgpKGw6XkYcB1N/huP2XJKg6k6DVRxxvQS/MnniuN3TaceU1Kpwqih
+3ybi9DWB/uMMmeeHWMuktIYbZZTa5ZS6IUQDSYRBL0dRL/Dm6j7UhgrZTClQUBcq
+O1Z1ac0AdpPxJvafSdbASMJBTOFnQdhsk4cH+17o1XcSZbKjTMkChnsJn4HUDw4+
+zI6mdj5Zim7L8UGmpj0AwbmI7j2jVju6YMp1OE5ydStKD6DMJxWN1h+rfLaGRPRP
+mO0eheHGpiCfj5J68i4medfIHOf8CQpnBYVfqkpI/1tBp7YtNG731i9iEaGeb1t3
+83WK8DeoG6rGIZC4Duk12BtHh/2CN2a6IoD81lLPxuica38G2whXp/bQ0OllK9mH
+f+dabqmCR2RgDArIwm2DOt2oStNMjillc7tzdhp8BslM6Vy/QzmBWpJayg1l4wLd
+NbLKQp8+72zi/KmFd8D5tPf6AY5XqCp9EPoq0hY+QIVrIhbmbDq5RQW74y+bUEEB
+XygvVwmjezexlhOeq84Q8q/xTCg07tvngmdu6gpUyz0FcBhvzZfw6290gwzs4QNt
+3u+hSAKfpqjNTrRTdRG9JBqrj4/WOTaI9+v4vbfvmUNJeoVLt9g=
+=zAr9
+-----END PGP SIGNATURE-----
