@@ -233,6 +233,8 @@ run_test_case() {
          [[ "$script_args" != *"-p"* ]] && \
          [[ "$script_args" != *"--print"* ]] && \
          [[ "$script_args" != *"--rule-path"* ]] && \
+         [[ "$script_args" != *"-m"* ]] && \
+         [[ "$script_args" != *"--message"* ]] && \
          [[ "$script_args" != *"--restore-rule"* ]] && \
          [[ "$script_args" != *"--help"* ]] && \
          [[ "$script_args" != *"-h"* ]] && \
@@ -501,6 +503,14 @@ setup_repo_with_tag() {
     git tag -a v1.0 -m "release one" HEAD~1
 }
 
+setup_repo_with_multiline_message() {
+    setup_repo_with_commits
+    echo "content four" > file4.txt
+    git add file4.txt
+    # -m <subject> -m <body> produces a message with subject, blank line and body
+    GIT_AUTHOR_DATE="2030-01-01 10:03:00 +0000" GIT_COMMITTER_DATE="2030-01-01 10:03:00 +0000" git commit -m "commit four subject" -m "commit four body line" -q
+}
+
 # RUNNING TESTS
 
 for SHELL_UNDER_TEST in bash fish; do
@@ -623,6 +633,24 @@ for SHELL_UNDER_TEST in bash fish; do
     run_test_case "19b" "7 digits is a hash (-c 1234567)" "setup_repo_with_commits" "copied" "-c 1234567" "" 1 "" "Error: Commit '1234567' not found." ""
     run_test_case "19c" "Last position in merge chain (-c 5)" "setup_repo_with_merge" "copied" "-c 5" "" 0 "Diff + rule copied to clipboard" "" "file1.txt"
     run_test_case "19d" "Branch point after merge chain (-c 4)" "setup_repo_with_merge" "copied" "-c 4 -p" "" 0 "file2.txt" "" ""
+
+    # -m / --message flag (commit message mode)
+    run_test_case "20a" "Message default (-m) prints latest commit message" "setup_repo_with_commits" "copied" "-m" "" 0 "commit three" "" ""
+    run_test_case "20b" "Message by position (-m 3)" "setup_repo_with_commits" "copied" "-m 3" "" 0 "commit one" "" ""
+    run_test_case "20c" "Message by ref (-m HEAD~1)" "setup_repo_with_commits" "copied" "-m HEAD~1" "" 0 "commit two" "" ""
+    run_test_case "20d" "Message with equals syntax (--message=2)" "setup_repo_with_commits" "copied" "--message=2" "" 0 "commit two" "" ""
+    run_test_case "20e" "Message with info header (-m 2 -i)" "setup_repo_with_commits" "copied" "-m 2 -i" "" 0 "Author: Tester <test@example.com>" "" ""
+    run_test_case "20f" "Message body preserved exactly (-m)" "setup_repo_with_multiline_message" "copied" "-m" "" 0 "commit four body line" "" ""
+    run_test_case "20g" "Message mode works without any rule file (-m)" "setup_diff_only_no_rule" "copied" "-m" "" 0 "initial commit" "" ""
+    run_test_case "20h" "Message merge position counting (-m 2)" "setup_repo_with_merge" "copied" "-m 2" "" 0 "feature commit" "" ""
+    run_test_case "20i" "Message empty repo (-m)" "setup_empty_git_repo" "copied" "-m" "" 1 "" "Error: No commits found in repository." ""
+    run_test_case "20j" "Message position out of bounds (-m 50)" "setup_repo_with_commits" "copied" "-m 50" "" 1 "" "Error: Commit at position 50 does not exist (branch only has 3 commits)." ""
+    run_test_case "20k" "Message unknown ref (-m abc)" "setup_repo_with_commits" "copied" "-m abc" "" 1 "" "Error: Commit 'abc' not found." ""
+    run_test_case "20l" "Message equals syntax empty (--message=)" "setup_repo_with_commits" "copied" "--message=" "" 1 "" "Error: Invalid commit ''. Use a position (e.g. 1, 2, 3) or a commit hash." ""
+    run_test_case "20m" "Message conflicts with --commit (-m -c)" "setup_repo_with_commits" "copied" "-m -c" "" 1 "" "Error: --message cannot be combined with --commit." ""
+    run_test_case "20n" "Message multiple conflicts joined (-m -p -d)" "setup_repo_with_commits" "copied" "-m -p -d" "" 1 "" "Error: --message cannot be combined with --print, --diff-only." ""
+    run_test_case "20o" "Message conflicts with deferred --restore-rule (-m --restore-rule)" "setup_none" "copied" "-m --restore-rule" "" 1 "" "--message cannot be combined with --restore-rule." ""
+    run_test_case "20p" "Info without message dies (-i)" "setup_none" "copied" "-i" "" 1 "" "Error: --info can only be used with --message." ""
 
 done
 
