@@ -43,6 +43,8 @@ function show_help
     echo ""
     echo "$BOLD"OPTIONS"$RESET"
     echo "  -c, --commit [REF]  Diff of a commit: position, hash or ref (default: 1 = latest)"
+    echo "  -m, --message [REF] Print the commit message: position, hash or ref (default: 1 = latest)"
+    echo "  -i, --info          With --message: add a header with hash, author and date"
     echo "  -r, --rule <file>   Use a custom rule file (.txt or .md)"
     echo "  -p, --print         Print the output instead of copying to clipboard"
     echo "  -d, --diff-only     Copy only the diff, without the rule"
@@ -50,6 +52,10 @@ function show_help
     echo "  --rule-path         Show which rule file is being used"
     echo "  -v, --version       Show version"
     echo "  -h, --help          Show this help"
+    echo ""
+    echo "$BOLD"NOTES"$RESET"
+    echo "  --message prints to the terminal, does not use a rule, and cannot be"
+    echo "  combined with -c, -r, -p, -d, --restore-rule or --rule-path."
     echo ""
     echo "$BOLD"RULE PRECEDENCE"$RESET"
     echo "  1. --rule <file>                 (highest)"
@@ -131,7 +137,7 @@ function lazy_init
     end
 end
 
-# Mode: staged 
+# Mode: staged
 function require_staged
     if git diff --cached --quiet
         echo "$RED"Nothing staged."$RESET Use 'git add' to stage your changes first." >&2
@@ -205,6 +211,26 @@ function stream_commit
     git show -m --first-parent -p --format="" "$commit_hash"
 end
 
+# Mode: message
+# Prints the commit message exactly as it was written, without indentation.
+# With with_info=true, a header (hash, short hash, author, date) goes first.
+function print_commit_message
+    set -l commit_hash "$argv[1]"
+    set -l with_info "$argv[2]"
+
+    # string collect joins the lines back into one value and trims trailing newlines
+    set -l message (git log -1 --format=%B "$commit_hash" | string collect)
+    or return 1
+
+    if test "$with_info" = true
+        git log -1 --date=default --format="Commit: %H%nShort:  %h%nAuthor: %an <%ae>%nDate:   %ad" "$commit_hash"
+        or return 1
+        echo
+    end
+
+    printf '%s\n' "$message"
+end
+
 function stream_content
     set -l mode "$argv[1]"
     set -l rule_file "$argv[2]"
@@ -226,7 +252,11 @@ function main
     set -l custom_rule ""
     set -l print_only false
     set -l show_rule_path false
+    set -l restore_rule false
     set -l diff_only false
+    set -l commit_flag false
+    set -l message_flag false
+    set -l info false
     set -l mode staged
     set -l commit_target ""
 
@@ -235,6 +265,7 @@ function main
         switch $argv[$i]
             case -c --commit
                 set mode commit
+                set commit_flag true
                 set -l next_i (math $i + 1)
                 if test $next_i -le (count $argv)
                     set -l next_val $argv[$next_i]
@@ -251,7 +282,33 @@ function main
                 end
             case '--commit=*'
                 set mode commit
+                set commit_flag true
                 set commit_target (string replace -r '^--commit=' '' -- "$argv[$i]")
+                set i (math $i + 1)
+            case -m --message
+                set mode message
+                set message_flag true
+                set -l next_i (math $i + 1)
+                if test $next_i -le (count $argv)
+                    set -l next_val $argv[$next_i]
+                    if not string match -q -- '-*' "$next_val"; or string match -qr -- '^-[0-9]+$' "$next_val"
+                        set commit_target "$next_val"
+                        set i (math $i + 2)
+                    else
+                        set commit_target "1"
+                        set i (math $i + 1)
+                    end
+                else
+                    set commit_target "1"
+                    set i (math $i + 1)
+                end
+            case '--message=*'
+                set mode message
+                set message_flag true
+                set commit_target (string replace -r '^--message=' '' -- "$argv[$i]")
+                set i (math $i + 1)
+            case -i --info
+                set info true
                 set i (math $i + 1)
             case -r --rule
                 set -l next_i (math $i + 1)
@@ -268,8 +325,8 @@ function main
                 set diff_only true
                 set i (math $i + 1)
             case --restore-rule
-                do_restore_rule
-                exit $status
+                set restore_rule true
+                set i (math $i + 1)
             case --rule-path
                 set show_rule_path true
                 set i (math $i + 1)
@@ -286,8 +343,41 @@ function main
         end
     end
 
+    # Validate flag combinations before doing anything
+    if test "$message_flag" = true
+        set -l conflicts
+        test "$commit_flag" = true; and set -a -- conflicts --commit
+        test -n "$custom_rule"; and set -a -- conflicts --rule
+        test "$print_only" = true; and set -a -- conflicts --print
+        test "$diff_only" = true; and set -a -- conflicts --diff-only
+        test "$restore_rule" = true; and set -a -- conflicts --restore-rule
+        test "$show_rule_path" = true; and set -a -- conflicts --rule-path
+
+        if test (count $conflicts) -gt 0
+            set -l joined (string join ", " -- $conflicts)
+            echo "$RED"Error:"$RESET --message cannot be combined with $joined." >&2
+            exit 1
+        end
+    end
+
+    if test "$info" = true; and test "$message_flag" = false
+        echo "$RED"Error:"$RESET --info can only be used with --message." >&2
+        exit 1
+    end
+
+    if test "$restore_rule" = true
+        do_restore_rule
+        exit $status
+    end
+
+    # Message mode never uses a rule; diff-only does not either
+    set -l needs_rule true
+    if test "$diff_only" = true; or test "$message_flag" = true
+        set needs_rule false
+    end
+
     set -l rule_file ""
-    if test "$diff_only" = false
+    if test "$needs_rule" = true
         set rule_file (resolve_rule "$custom_rule")
         if test $status -ne 0
             exit 1
@@ -299,11 +389,11 @@ function main
         exit 0
     end
 
-    if test "$diff_only" = false
+    if test "$needs_rule" = true
         lazy_init
     end
 
-    if test "$diff_only" = false; and not test -s "$rule_file"
+    if test "$needs_rule" = true; and not test -s "$rule_file"
         echo "$RED"Error:"$RESET Rule file is empty: $rule_file" >&2
         echo "Please edit the file or run 'gdiff --restore-rule' to restore the default rule." >&2
         exit 1
@@ -323,11 +413,16 @@ function main
     switch "$mode"
         case staged
             require_staged; or exit 1
-        case commit
+        case commit message
             set commit_hash (resolve_commit "$commit_target")
             if test $status -ne 0
                 exit 1
             end
+    end
+
+    if test "$mode" = message
+        print_commit_message "$commit_hash" "$info"
+        return $status
     end
 
     if test "$print_only" = true
