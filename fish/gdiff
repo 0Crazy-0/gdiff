@@ -218,9 +218,9 @@ function print_commit_message
     set -l commit_hash "$argv[1]"
     set -l with_info "$argv[2]"
 
-    # string collect joins the lines back into one value and trims trailing newlines
-    set -l message (git log -1 --format=%B "$commit_hash" | string collect)
+    set -l raw (git log -1 --format=%B "$commit_hash")
     or return 1
+    set -l message (string join \n -- $raw | string collect)
 
     if test "$with_info" = true
         git log -1 --date=default --format="Commit: %H%nShort:  %h%nAuthor: %an <%ae>%nDate:   %ad" "$commit_hash"
