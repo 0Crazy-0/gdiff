@@ -1,5 +1,5 @@
 Name:           gdiff
-Version:        1.2.0
+Version:        1.3.0
 Release:        1%{?dist}
 Summary:        CLI tool to copy git staged diffs and a rule file to the clipboard
 
@@ -35,6 +35,11 @@ install -Dm644 share/rule.txt %{buildroot}%{_datadir}/gdiff/rule.txt
 %{_datadir}/gdiff/
 
 %changelog
+* Sat Nov 7 2026 crazy <0crazy.dev@gmail.com> - 1.3.0-1
+- Add --commit / -c option to diff existing commits by position, hash or ref
+- Add --message / -m and --info options to print commit messages
+- Fix commit position lookup to count all commits following git log order
+
 * Sat Sep 5 2026 crazy <0crazy.dev@gmail.com> - 1.2.0-1
 - Add Windows config path support (APPDATA, GDIFF_CONFIG_HOME)
 - Add PowerShell port and universal install script

@@ -195,7 +195,7 @@ gdiff -c 2
 gdiff -c a1b2c3d
 
 # Copy the diff of a specific ref or tag
-gdiff -c v1.2.0
+gdiff -c v1.3.0
 
 # Print the diff of a commit to stdout without the rule
 gdiff -c 2 -d -p
@@ -215,7 +215,7 @@ gdiff -m 2
 
 # Print the message of a specific commit by hash or ref
 gdiff -m a1b2c3d
-gdiff -m v1.2.0
+gdiff -m v1.3.0
 
 # Add a header with hash, author and date above the message
 gdiff -m 2 -i
