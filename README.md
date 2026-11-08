@@ -1,6 +1,6 @@
 # gdiff
 
-> **An ultra-lightweight, 100% local, and free CLI tool to generate perfect, AI-assisted conventional commit messages using any LLM.**
+> **A tiny, 100% local, and free CLI that bridges your git history and any LLM: generate conventional commit messages from your staged changes, or revisit past commits to review or rewrite them.**
 
 ---
 
@@ -13,7 +13,21 @@
 [![Shell: Bash](https://img.shields.io/badge/Shell-Bash-4EAA25.svg?logo=gnu-bash&logoColor=white)](https://www.gnu.org/software/bash/)
 [![Local: No API Key Required](https://img.shields.io/badge/API--Key-Not%20Required-brightgreen.svg)](#)
 
-Have you ever spent 10 minutes staring at a terminal, trying to figure out what to write in your commit message? `gdiff` is built to solve that exact problem, without the bloated dependencies, paid API keys, or heavy local setups that other commit-helpers force upon you.
+Have you ever spent 10 minutes staring at a terminal, trying to figure out what to write in your commit message? Or needed to quickly re-read an old commit, or hand it to an LLM? `gdiff` is built to solve exactly that, without the bloated dependencies, paid API keys, or heavy local setups that other commit-helpers force upon you.
+
+---
+
+## What Can It Do?
+
+`gdiff` has three modes. Pick the one that matches what you are looking at:
+
+| Command | Reads | Output | Rule appended |
+| :--- | :--- | :--- | :---: |
+| `gdiff` | your staged changes | clipboard | yes |
+| `gdiff -c [REF]` | the diff of a past commit | clipboard | yes |
+| `gdiff -m [REF]` | the message of a past commit | terminal | no |
+
+Two modifiers tweak the output: `-p` prints instead of copying, and `-d` copies only the diff, without the rule. All three ports (Bash, Fish and PowerShell) support the same flags.
 
 ---
 
@@ -26,32 +40,10 @@ Most AI commit assistants are overly complicated. They demand:
 
 `gdiff` takes a completely different, **human-centric, ultra-lightweight approach**:
 
-1.  **No API Keys & Completely Free**: It doesn't connect directly to any API. It streams your changes + prompt guidelines to your system clipboard, letting you leverage **any free web LLM interface** (like Gemini, ChatGPT, Claude) or your **IDE-integrated AI chat**.
-2.  **100% Customizable Prompts**: Your rules live in an open text file. You can easily tweak the guidelines to match your company's rules, conventional commit formatting, or personal style.
-3.  **Lightweight & Fast**: Written in a pure, highly-optimized shell script (**Bash**) with an optional native **Fish** version, and zero dependencies other than `git` and a system clipboard command.
-
----
-
-## Visual Workflow
-
-```text
- ┌──────────────┐      gdiff      ┌──────────────────────┐
- │ Staged Diffs │ ──────────────> │ Diff + Commit Rules  │
- └──────────────┘                 │ Copied to Clipboard  │
-                                  └──────────────────────┘
-                                             │
-                                             ▼  (Paste)
-                                  ┌──────────────────────┐
-                                  │   Any LLM Chat UI    │
-                                  │ (ChatGPT/Gemini/etc) │
-                                  └──────────────────────┘
-                                             │
-                                             ▼  (Generates)
-                                  ┌──────────────────────┐
-                                  │   Perfect, Compliant │
-                                  │    Commit Message!   │
-                                  └──────────────────────┘
-```
+1.  **No API Keys & Completely Free**: It doesn't connect directly to any API. It sends your diffs + prompt guidelines to your system clipboard, so you can paste them anywhere: **any web LLM interface** (Gemini, ChatGPT, Claude), your **IDE-integrated AI chat**, or **any agent CLI** (opencode, Claude Code, Codex, agy). You can also teach your agent to run `gdiff --print` on its own, so it reads your rule and writes the commit for you, for example right after finishing a feature or a refactor.
+2.  **100% Customizable Prompts**: Your rules live in an open text file. You can easily tweak the guidelines to fit the way you work: your team's conventions, your project, or your personal style.
+3.  **Your Whole History, Not Just What Is Staged**: Write a message for new changes, or grab the diff and message of any past commit to read it, review it, or hand it to an LLM.
+4.  **Lightweight & Fast**: Written in a pure, highly-optimized shell script (**Bash**) with an optional native **Fish** version and a native **PowerShell** port, and zero dependencies other than `git` and a system clipboard command.
 
 ---
 
@@ -252,6 +244,8 @@ feat(core): add authentication gateway
 | `-v` | `--version` | Display the installed version. |
 | `-h` | `--help` | Show usage instructions. |
 
+All flags are available in the Bash, Fish and PowerShell versions.
+
 ### Rule Precedence Order
 `gdiff` evaluates which rule file to use in the following strict hierarchy (from highest priority to lowest):
 
@@ -279,7 +273,7 @@ Many tools in the modern ecosystem execute API requests directly. While convenie
 *   **Obsolescence**: As models are deprecated, the client must be continuously updated.
 *   **Ineffective Prompts**: Hardcoded prompts cannot easily adapt to diverse workspaces.
 
-By decoupling context gathering (`git diff`) and instruction formatting (`rule.txt`) from AI querying, `gdiff` remains incredibly resilient. The clipboard acts as a universal bridge, allowing you to use cutting-edge web models, local desktop clients, or corporate AI endpoints seamlessly and at zero cost.
+By decoupling context gathering (`git diff`, `git show`) and instruction formatting (`rule.txt`) from AI querying, `gdiff` remains incredibly resilient. The clipboard acts as a universal bridge, allowing you to use cutting-edge web models, local desktop clients, agent CLIs, or your workplace's AI endpoints seamlessly and at zero cost.
 
 ### Optional Fish Implementation
 `gdiff` also provides a native **Fish** implementation (`fish/gdiff`), written from scratch in Fish to avoid unnecessary subprocess invocations and guarantee fast startup times. Since it is not shipped by the packages, it must be installed manually (see [Optional: Fish version (manual install)](#optional-fish-version-manual-install)).
