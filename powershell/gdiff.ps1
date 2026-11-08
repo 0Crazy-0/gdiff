@@ -30,6 +30,33 @@ if (-not $script:DEFAULT_RULE) {
     }
 }
 
+# Global state (filled by Parse-Args)
+$script:CustomRule = ""
+$script:PrintOnly = $false
+$script:ShowRulePath = $false
+$script:RestoreRule = $false
+$script:DiffOnly = $false
+$script:CommitFlag = $false
+$script:MessageFlag = $false
+$script:Info = $false
+$script:Mode = "staged"
+$script:CommitTarget = ""
+$script:CommitHash = ""
+$script:RuleFile = ""
+$script:RefShift = 1
+
+# Helpers
+function Die {
+    param([string]$Message)
+    [Console]::Error.WriteLine("Error: $Message")
+    exit 1
+}
+
+# Message mode never uses a rule; diff-only does not either
+function Test-NeedsRule {
+    return (-not $script:DiffOnly -and -not $script:MessageFlag)
+}
+
 function Show-Help {
     Write-Host "USAGE"
     Write-Host "  gdiff [OPTIONS]"
@@ -232,97 +259,88 @@ function Show-CommitMessage {
 # Output
 # Emits the diff of the active mode followed by the rule (if any), line by line.
 function Get-GdiffContent {
-    param(
-        [string]$Mode,
-        [string]$RuleFile,
-        [string]$CommitHash
-    )
-
-    switch ($Mode) {
+    switch ($script:Mode) {
         'staged' { Get-StagedDiff }
-        'commit' { Get-CommitDiff -CommitHash $CommitHash }
+        'commit' { Get-CommitDiff -CommitHash $script:CommitHash }
     }
     ""
     ""
-    if ($RuleFile) {
-        Get-Content $RuleFile
+    if (Test-NeedsRule) {
+        Get-Content $script:RuleFile
     }
 }
 
-function Main {
-    $customRule = ""
-    $printOnly = $false
-    $showRulePath = $false
-    $restoreRule = $false
-    $diffOnly = $false
-    $commitFlag = $false
-    $messageFlag = $false
-    $info = $false
-    $mode = "staged"
-    $commitTarget = ""
+# Argument parsing
+
+# If the next argument looks like a ref (not an option), consume it.
+# $Tokens[$Index] is the flag itself; $Tokens[$Index + 1] the candidate ref.
+function Parse-RefArg {
+    param(
+        [string[]]$Tokens,
+        [int]$Index
+    )
+
+    if (($Index + 1) -lt $Tokens.Count) {
+        $nextArg = "$($Tokens[$Index + 1])"
+        if (($nextArg -notmatch '^-') -or ($nextArg -match '^-[0-9]+$')) {
+            $script:CommitTarget = $nextArg
+            $script:RefShift = 2
+            return
+        }
+    }
+
+    $script:CommitTarget = "1"
+    $script:RefShift = 1
+}
+
+function Parse-Args {
+    param([string[]]$Tokens)
 
     $i = 0
-    while ($i -lt $args.Count) {
-        $arg = "$($args[$i])"
+    while ($i -lt $Tokens.Count) {
+        $arg = "$($Tokens[$i])"
         switch -Regex ($arg) {
             '^(--commit|-c)$' {
-                $mode = "commit"
-                $commitFlag = $true
-                if (($i + 1) -lt $args.Count) {
-                    $nextArg = "$($args[$i + 1])"
-                    if (($nextArg -notmatch '^-') -or ($nextArg -match '^-[0-9]+$')) {
-                        $commitTarget = $nextArg
-                        $i += 2
-                        continue
-                    }
-                }
-                $commitTarget = "1"
-                $i++
+                $script:Mode = "commit"
+                $script:CommitFlag = $true
+                Parse-RefArg -Tokens $Tokens -Index $i
+                $i += $script:RefShift
                 continue
             }
             '^--commit=(.*)$' {
-                $mode = "commit"
-                $commitFlag = $true
-                $commitTarget = $Matches[1]
+                $script:Mode = "commit"
+                $script:CommitFlag = $true
+                $script:CommitTarget = $Matches[1]
                 $i++
                 continue
             }
             '^(--message|-m)$' {
-                $mode = "message"
-                $messageFlag = $true
-                if (($i + 1) -lt $args.Count) {
-                    $nextArg = "$($args[$i + 1])"
-                    if (($nextArg -notmatch '^-') -or ($nextArg -match '^-[0-9]+$')) {
-                        $commitTarget = $nextArg
-                        $i += 2
-                        continue
-                    }
-                }
-                $commitTarget = "1"
-                $i++
+                $script:Mode = "message"
+                $script:MessageFlag = $true
+                Parse-RefArg -Tokens $Tokens -Index $i
+                $i += $script:RefShift
                 continue
             }
             '^--message=(.*)$' {
-                $mode = "message"
-                $messageFlag = $true
-                $commitTarget = $Matches[1]
+                $script:Mode = "message"
+                $script:MessageFlag = $true
+                $script:CommitTarget = $Matches[1]
                 $i++
                 continue
             }
-            '^(--info|-i)$' { $info = $true; $i++; continue }
+            '^(--info|-i)$' { $script:Info = $true; $i++; continue }
             '^(--rule|-r)$' {
-                if ($i -ge ($args.Count - 1)) {
-                    [Console]::Error.WriteLine("Error: Option '$arg' requires an argument.")
-                    exit 1
+                if ($i -ge ($Tokens.Count - 1)) {
+                    Die "Option '$arg' requires an argument."
                 }
-                $customRule = "$($args[$i + 1])"
+                $script:CustomRule = "$($Tokens[$i + 1])"
                 $i += 2
                 continue
             }
-            '^(--print|-p)$' { $printOnly = $true; $i++; continue }
-            '^(--diff-only|-d)$' { $diffOnly = $true; $i++; continue }
-            '^--restore-rule$' { $restoreRule = $true; $i++; continue }
-            '^--rule-path$' { $showRulePath = $true; $i++; continue }
+            '^(--print|-p)$' { $script:PrintOnly = $true; $i++; continue }
+            '^(--diff-only|-d)$' { $script:DiffOnly = $true; $i++; continue }
+            '^--restore-rule$' { $script:RestoreRule = $true; $i++; continue }
+            '^--rule-path$' { $script:ShowRulePath = $true; $i++; continue }
             '^(--version|-v)$' { Write-Host "gdiff v$script:VERSION"; exit 0 }
             '^(--help|-h)$' { Show-Help; exit 0 }
             default {
@@ -332,83 +350,73 @@ function Main {
             }
         }
     }
+}
 
-    # Validate flag combinations before doing anything
-    if ($messageFlag) {
+# Validate flag combinations before doing anything
+function Assert-Flags {
+    if ($script:MessageFlag) {
         $conflicts = @()
-        if ($commitFlag) { $conflicts += "--commit" }
-        if ($customRule) { $conflicts += "--rule" }
-        if ($printOnly) { $conflicts += "--print" }
-        if ($diffOnly) { $conflicts += "--diff-only" }
-        if ($restoreRule) { $conflicts += "--restore-rule" }
-        if ($showRulePath) { $conflicts += "--rule-path" }
+        if ($script:CommitFlag) { $conflicts += "--commit" }
+        if ($script:CustomRule) { $conflicts += "--rule" }
+        if ($script:PrintOnly) { $conflicts += "--print" }
+        if ($script:DiffOnly) { $conflicts += "--diff-only" }
+        if ($script:RestoreRule) { $conflicts += "--restore-rule" }
+        if ($script:ShowRulePath) { $conflicts += "--rule-path" }
 
         if ($conflicts.Count -gt 0) {
-            [Console]::Error.WriteLine(("Error: --message cannot be combined with {0}." -f ($conflicts -join ", ")))
-            exit 1
+            Die ("--message cannot be combined with {0}." -f ($conflicts -join ", "))
         }
     }
 
-    if ($info -and -not $messageFlag) {
-        [Console]::Error.WriteLine("Error: --info can only be used with --message.")
+    if ($script:Info -and -not $script:MessageFlag) {
+        Die "--info can only be used with --message."
+    }
+}
+
+# Setup steps used by Main
+
+# Message mode never uses a rule; diff-only does not either
+function Select-Rule {
+    if (-not (Test-NeedsRule)) { return }
+    $script:RuleFile = Resolve-Rule -CustomRule $script:CustomRule
+}
+
+function Assert-RuleFile {
+    if (-not (Test-NeedsRule)) { return }
+    Invoke-LazyInit
+    if (-not (Test-Path $script:RuleFile) -or (Get-Item $script:RuleFile).Length -eq 0) {
+        [Console]::Error.WriteLine("Error: Rule file is empty: $($script:RuleFile)")
+        [Console]::Error.WriteLine("Please edit the file or run 'gdiff --restore-rule' to restore the default rule.")
         exit 1
     }
+}
 
-    if ($restoreRule) {
-        exit (Restore-Rule)
-    }
-
-    # Message mode never uses a rule; diff-only does not either
-    $needsRule = -not $diffOnly -and -not $messageFlag
-
-    $ruleFile = ""
-    if ($needsRule) {
-        $ruleFile = Resolve-Rule -CustomRule $customRule
-    }
-
-    if ($showRulePath) {
-        Write-Output $ruleFile
-        exit 0
-    }
-
-    if ($needsRule) {
-        Invoke-LazyInit
-        if (-not (Test-Path $ruleFile) -or (Get-Item $ruleFile).Length -eq 0) {
-            [Console]::Error.WriteLine("Error: Rule file is empty: $ruleFile")
-            [Console]::Error.WriteLine("Please edit the file or run 'gdiff --restore-rule' to restore the default rule.")
-            exit 1
-        }
-    }
-
+function Assert-Environment {
     if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-        [Console]::Error.WriteLine("Error: git is not installed.")
-        exit 1
+        Die "git is not installed."
     }
 
     git rev-parse --git-dir 2>$null | Out-Null
     if ($LASTEXITCODE -ne 0) {
-        [Console]::Error.WriteLine("Error: Not inside a git repository.")
-        exit 1
+        Die "Not inside a git repository."
     }
+}
 
-    $commitHash = ""
-    switch ($mode) {
+function Resolve-Target {
+    switch ($script:Mode) {
         'staged' { Assert-Staged }
-        'commit' { $commitHash = Resolve-Commit -CommitTarget $commitTarget }
-        'message' { $commitHash = Resolve-Commit -CommitTarget $commitTarget }
+        'commit' { $script:CommitHash = Resolve-Commit -CommitTarget $script:CommitTarget }
+        'message' { $script:CommitHash = Resolve-Commit -CommitTarget $script:CommitTarget }
+    }
+}
+
+function Send-GdiffOutput {
+    if ($script:PrintOnly) {
+        Get-GdiffContent
+        return
     }
 
-    if ($mode -eq 'message') {
-        Show-CommitMessage -CommitHash $commitHash -WithInfo $info
-        exit 0
-    }
-
-    if ($printOnly) {
-        Get-GdiffContent -Mode $mode -RuleFile $ruleFile -CommitHash $commitHash
-        exit 0
-    }
-
-    $content = @(Get-GdiffContent -Mode $mode -RuleFile $ruleFile -CommitHash $commitHash) -join "`n"
+    $content = @(Get-GdiffContent) -join "`n"
 
     try {
         Set-Clipboard -Value $content -ErrorAction Stop
@@ -419,12 +427,39 @@ function Main {
         exit 1
     }
 
-    if ($diffOnly) {
+    if ($script:DiffOnly) {
         Write-Host ("{0} Diff copied to clipboard" -f [char]0x2713) -ForegroundColor Green
     } else {
         Write-Host ("{0} Diff + rule copied to clipboard" -f [char]0x2713) -ForegroundColor Green
     }
     exit 0
+}
+
+# Entry point
+function Main {
+    Parse-Args -Tokens $args
+    Assert-Flags
+
+    if ($script:RestoreRule) {
+        exit (Restore-Rule)
+    }
+
+    Select-Rule
+    if ($script:ShowRulePath) {
+        Write-Output $script:RuleFile
+        exit 0
+    }
+    Assert-RuleFile
+
+    Assert-Environment
+    Resolve-Target
+
+    if ($script:Mode -eq 'message') {
+        Show-CommitMessage -CommitHash $script:CommitHash -WithInfo $script:Info
+        exit 0
+    }
+
+    Send-GdiffOutput
 }
 
 Main @args

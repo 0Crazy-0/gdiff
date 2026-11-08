@@ -30,6 +30,31 @@ GREEN='\033[0;32m'
 BOLD='\033[1m'
 RESET='\033[0m'
 
+# Global state (filled by parse_args)
+CUSTOM_RULE=""
+PRINT_ONLY=false
+SHOW_RULE_PATH=false
+RESTORE_RULE=false
+DIFF_ONLY=false
+COMMIT_FLAG=false
+MESSAGE_FLAG=false
+INFO=false
+MODE="staged"
+COMMIT_TARGET=""
+COMMIT_HASH=""
+RULE_FILE=""
+REF_SHIFT=1
+
+# Helpers
+die() {
+    echo -e "${RED}Error:${RESET} $*" >&2
+    exit 1
+}
+
+needs_rule() {
+    ! $DIFF_ONLY && ! $MESSAGE_FLAG
+}
+
 detect_clipboard() {
     if command -v wl-copy &>/dev/null && [ -n "$WAYLAND_DISPLAY" ]; then
         echo "wl-copy"
@@ -245,80 +270,70 @@ print_commit_message() {
     printf '%s\n' "$message"
 }
 
-main() {
-    local custom_rule=""
-    local print_only=false
-    local show_rule_path=false
-    local restore_rule=false
-    local diff_only=false
-    local commit_flag=false
-    local message_flag=false
-    local info=false
-    local mode="staged"
-    local commit_target=""
+# Argument parsing
 
+# If the next argument looks like a ref (not an option), consume it.
+# Usage: parse_ref_arg "$@"   (where $1 is the flag itself)
+parse_ref_arg() {
+    if [[ $# -ge 2 && ( ! "$2" =~ ^- || "$2" =~ ^-[0-9]+$ ) ]]; then
+        COMMIT_TARGET="$2"
+        REF_SHIFT=2
+    else
+        COMMIT_TARGET="1"
+        REF_SHIFT=1
+    fi
+}
+
+parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -c|--commit)
-                mode="commit"
-                commit_flag=true
-                if [[ $# -ge 2 && ( ! "$2" =~ ^- || "$2" =~ ^-[0-9]+$ ) ]]; then
-                    commit_target="$2"
-                    shift 2
-                else
-                    commit_target="1"
-                    shift
-                fi
+                MODE="commit"
+                COMMIT_FLAG=true
+                parse_ref_arg "$@"
+                shift "$REF_SHIFT"
                 ;;
             --commit=*)
-                mode="commit"
-                commit_flag=true
-                commit_target="${1#*=}"
+                MODE="commit"
+                COMMIT_FLAG=true
+                COMMIT_TARGET="${1#*=}"
                 shift
                 ;;
             -m|--message)
-                mode="message"
-                message_flag=true
-                if [[ $# -ge 2 && ( ! "$2" =~ ^- || "$2" =~ ^-[0-9]+$ ) ]]; then
-                    commit_target="$2"
-                    shift 2
-                else
-                    commit_target="1"
-                    shift
-                fi
+                MODE="message"
+                MESSAGE_FLAG=true
+                parse_ref_arg "$@"
+                shift "$REF_SHIFT"
                 ;;
             --message=*)
-                mode="message"
-                message_flag=true
-                commit_target="${1#*=}"
+                MODE="message"
+                MESSAGE_FLAG=true
+                COMMIT_TARGET="${1#*=}"
                 shift
                 ;;
             -i|--info)
-                info=true
+                INFO=true
                 shift
                 ;;
             -r|--rule)
-                if [[ $# -lt 2 ]]; then
-                    echo -e "${RED}Error:${RESET} Option '$1' requires an argument." >&2
-                    exit 1
-                fi
-                custom_rule="$2"
+                [[ $# -ge 2 ]] || die "Option '$1' requires an argument."
+                CUSTOM_RULE="$2"
                 shift 2
                 ;;
             -p|--print)
-                print_only=true
+                PRINT_ONLY=true
                 shift
                 ;;
             -d|--diff-only)
-                diff_only=true
+                DIFF_ONLY=true
                 shift
                 ;;
             --restore-rule)
-                restore_rule=true
+                RESTORE_RULE=true
                 shift
                 ;;
             --rule-path)
-                show_rule_path=true
+                SHOW_RULE_PATH=true
                 shift
                 ;;
             -v|--version)
@@ -336,96 +351,77 @@ main() {
                 ;;
         esac
     done
+}
 
-    # Validate flag combinations before doing anything
-    if $message_flag; then
+# Validate flag combinations before doing anything
+validate_flags() {
+    if $MESSAGE_FLAG; then
         local conflicts=()
-        $commit_flag && conflicts+=("--commit")
-        [ -n "$custom_rule" ] && conflicts+=("--rule")
-        $print_only && conflicts+=("--print")
-        $diff_only && conflicts+=("--diff-only")
-        $restore_rule && conflicts+=("--restore-rule")
-        $show_rule_path && conflicts+=("--rule-path")
+        $COMMIT_FLAG && conflicts+=("--commit")
+        [ -n "$CUSTOM_RULE" ] && conflicts+=("--rule")
+        $PRINT_ONLY && conflicts+=("--print")
+        $DIFF_ONLY && conflicts+=("--diff-only")
+        $RESTORE_RULE && conflicts+=("--restore-rule")
+        $SHOW_RULE_PATH && conflicts+=("--rule-path")
 
         if [ ${#conflicts[@]} -gt 0 ]; then
             local joined
             printf -v joined '%s, ' "${conflicts[@]}"
-            joined="${joined%, }"
-            echo -e "${RED}Error:${RESET} --message cannot be combined with $joined." >&2
-            exit 1
+            die "--message cannot be combined with ${joined%, }."
         fi
     fi
 
-    if $info && ! $message_flag; then
-        echo -e "${RED}Error:${RESET} --info can only be used with --message." >&2
-        exit 1
+    if $INFO && ! $MESSAGE_FLAG; then
+        die "--info can only be used with --message."
     fi
+}
 
-    if $restore_rule; then
-        do_restore_rule
-        exit $?
-    fi
+# Setup steps used by main
 
-    # Message mode never uses a rule; diff-only does not either
-    local needs_rule=true
-    if $diff_only || $message_flag; then
-        needs_rule=false
-    fi
+# Message mode never uses a rule; diff-only does not either
+select_rule() {
+    needs_rule || return 0
+    RULE_FILE=$(resolve_rule "$CUSTOM_RULE") || exit 1
+}
 
-    local rule_file=""
-    if $needs_rule; then
-        rule_file=$(resolve_rule "$custom_rule") || exit 1
-    fi
-
-    if $show_rule_path; then
-        echo "$rule_file"
-        exit 0
-    fi
-
-    if $needs_rule; then
-        lazy_init
-    fi
-
-    if $needs_rule && [ ! -s "$rule_file" ]; then
-        echo -e "${RED}Error:${RESET} Rule file is empty: $rule_file" >&2
+check_rule() {
+    needs_rule || return 0
+    lazy_init
+    if [ ! -s "$RULE_FILE" ]; then
+        echo -e "${RED}Error:${RESET} Rule file is empty: $RULE_FILE" >&2
         echo "Please edit the file or run 'gdiff --restore-rule' to restore the default rule." >&2
         exit 1
     fi
-    if ! command -v git &>/dev/null; then
-        echo -e "${RED}Error:${RESET} git is not installed." >&2
-        exit 1
-    fi
+}
 
-    if ! git rev-parse --git-dir &>/dev/null; then
-        echo -e "${RED}Error:${RESET} Not inside a git repository." >&2
-        exit 1
-    fi
+check_environment() {
+    command -v git &>/dev/null || die "git is not installed."
+    git rev-parse --git-dir &>/dev/null || die "Not inside a git repository."
+}
 
-    local commit_hash=""
-    case "$mode" in
+resolve_target() {
+    case "$MODE" in
         staged) require_staged || exit 1 ;;
-        commit|message) commit_hash=$(resolve_commit "$commit_target") || exit 1 ;;
+        commit|message) COMMIT_HASH=$(resolve_commit "$COMMIT_TARGET") || exit 1 ;;
     esac
+}
 
-    if [ "$mode" = "message" ]; then
-        print_commit_message "$commit_hash" "$info"
-        return $?
+# Output
+emit_content() {
+    case "$MODE" in
+        staged) stream_staged ;;
+        commit) stream_commit "$COMMIT_HASH" ;;
+    esac
+    echo
+    echo
+    if needs_rule; then
+        cat "$RULE_FILE"
     fi
+}
 
-    stream_content() {
-        case "$mode" in
-            staged) stream_staged ;;
-            commit) stream_commit "$commit_hash" ;;
-        esac
-        echo
-        echo
-        if $needs_rule; then
-            cat "$rule_file"
-        fi
-    }
-
-    if $print_only; then
-        stream_content
+deliver_output() {
+    if $PRINT_ONLY; then
+        emit_content
         return 0
     fi
 
@@ -438,16 +434,45 @@ main() {
         exit 1
     fi
 
-    if stream_content | $clipboard_cmd; then
-        if $diff_only; then
+    if emit_content | $clipboard_cmd; then
+        if $DIFF_ONLY; then
             echo -e "${GREEN}✓${RESET} Diff copied to clipboard"
         else
             echo -e "${GREEN}✓${RESET} Diff + rule copied to clipboard"
         fi
     else
-        echo -e "${RED}Error:${RESET} Failed to copy to clipboard." >&2
-        exit 1
+        die "Failed to copy to clipboard."
     fi
 }
 
-main "$@"
+# Entry point
+main() {
+    parse_args "$@"
+    validate_flags
+
+    if $RESTORE_RULE; then
+        do_restore_rule
+        exit $?
+    fi
+
+    select_rule
+    if $SHOW_RULE_PATH; then
+        echo "$RULE_FILE"
+        exit 0
+    fi
+    check_rule
+
+    check_environment
+    resolve_target
+
+    if [ "$MODE" = "message" ]; then
+        print_commit_message "$COMMIT_HASH" "$INFO"
+    else
+        deliver_output
+    fi
+}
+
+# Only run main when executed directly (allows sourcing the file in tests)
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi
