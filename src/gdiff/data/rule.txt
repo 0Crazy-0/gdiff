@@ -1,0 +1,35 @@
+Create a conventional commit message in English for the above diff following these strict rules:
+
+- First line (subject): MAX 50 characters (hard limit)
+- Use Conventional Commits format → type(scope): description in imperative mood (scope is optional, e.g. type: description)
+  Valid types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
+- If a scope is used, do not repeat the scope's name or its keywords inside the description (e.g., avoid "feat(gdiff): add gdiff CLI", prefer "feat(gdiff): add CLI" or "feat: add gdiff CLI")
+- Describe WHAT changed, not WHY — the 'why' belongs in the Pull Request
+- Subject must NOT end with a period
+- If more explanation is needed: leave a blank line and add a body
+- Body: write complete sentences, one per line (MAX 72 characters per line)
+- Each body line MUST end with a period
+- Do NOT break sentences mid-phrase across lines
+- Be professional, concise and clear
+
+Examples of perfect commits:
+
+  Example 1: With scope and with body
+    feat(auth): add Apple Sign In support
+
+    Adds a new login button for Apple authentication on the sign-in screen.
+    Configures secure token exchange with Apple authorization servers.
+    Updates database schema to store Apple user identifiers.
+
+  Example 2: Without scope and with body
+    feat: add dark mode support
+
+    Adds a theme switcher component to the main navigation bar.
+    Implements CSS custom properties for light and dark color palettes.
+    Persists the user's theme selection in localStorage.
+
+  Example 3: With scope and without body
+    refactor(orders): use AutoMapper for DTOs
+
+  Example 4: Without scope and without body
+    fix: prevent double submission on checkout
