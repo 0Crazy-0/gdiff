@@ -7,9 +7,37 @@ from collections.abc import Callable
 from gdiff import rules, ui
 from gdiff.errors import GdiffError
 
+SUMMARY = "Show which rule file is used and manage it"
+
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("action", nargs="?")
+
+
+def build_help() -> str:
+    config = rules.config_dir()
+    return "\n".join(
+        [
+            ui.bold("DESCRIPTION"),
+            "  Show which rule file is used and manage it.",
+            "",
+            ui.bold("USAGE"),
+            "  gdiff rule <path|init|reset>",
+            "",
+            ui.bold("RULE ACTIONS"),
+            "  path     Show which rule file is being used",
+            f"  init     Create an editable copy of the default rule in {config}",
+            "  reset    Overwrite your rule with the default one",
+            "",
+            ui.bold("LOOKUP ORDER"),
+            "  1. gdiff -r <file>    (highest)",
+            f"  2. {config / 'rule.txt'} (or rule.md)",
+            "  3. built-in default rule",
+            "",
+            ui.bold("GLOBAL FLAGS"),
+            "  -h, --help    Show help information",
+        ]
+    )
 
 
 def run_path() -> int:

@@ -6,10 +6,12 @@ import sys
 from gdiff import clipboard, git, rules, ui
 from gdiff.errors import GdiffError
 
+DESTS = ("commit", "rule", "print_only", "diff_only")
+
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("-c", "--commit", nargs="?", const="1", default=None, metavar="REF")
-    parser.add_argument("-r", "--rule", metavar="FILE")
+    parser.add_argument("-c", "--commit", nargs="?", const="1", default=None)
+    parser.add_argument("-r", "--rule")
     parser.add_argument("-p", "--print", dest="print_only", action="store_true")
     parser.add_argument("-d", "--diff-only", dest="diff_only", action="store_true")
 
