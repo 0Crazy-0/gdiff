@@ -13,12 +13,15 @@ RESET_HINT = "Please edit the file or run 'gdiff rule reset' to restore the defa
 
 def config_dir() -> Path:
     override = os.environ.get("GDIFF_CONFIG_HOME")
+
     if override:
         return Path(override)
+
     if sys.platform == "win32":
         base = os.environ.get("APPDATA") or str(Path.home() / ".config")
     else:
         base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
+
     return Path(base) / "gdiff"
 
 
