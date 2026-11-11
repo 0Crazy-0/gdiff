@@ -10,22 +10,23 @@ _BOLD = "\033[1m"
 _RESET = "\033[0m"
 
 
-def _paint(text: str, code: str, stream: TextIO) -> str:
+def _paint(code: str, text: str, stream: TextIO) -> str:
     if os.environ.get("NO_COLOR") or not stream.isatty():
         return text
+    
     return f"{code}{text}{_RESET}"
 
 
 def red(text: str, stream: TextIO | None = None) -> str:
-    return _paint(text, _RED, stream or sys.stderr)
+    return _paint(_RED, text, stream or sys.stderr)
 
 
 def green(text: str, stream: TextIO | None = None) -> str:
-    return _paint(text, _GREEN, stream or sys.stdout)
+    return _paint(_GREEN, text, stream or sys.stdout)
 
 
 def bold(text: str, stream: TextIO | None = None) -> str:
-    return _paint(text, _BOLD, stream or sys.stdout)
+    return _paint(_BOLD, text, stream or sys.stdout)
 
 
 def error(label: str, message: str, hint: str | None = None) -> None:
