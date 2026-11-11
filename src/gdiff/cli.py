@@ -25,7 +25,7 @@ class _Parser(argparse.ArgumentParser):
 
 
 def _build_main_help() -> str:
-    commands = [f"  {name:<10}{module.SUMMARY}" for name, module in COMMANDS.items()]
+    commands: list[str] = [f"  {name:<10}{module.SUMMARY}" for name, module in COMMANDS.items()]
     return "\n".join(
         [
             ui.bold("DESCRIPTION"),
