@@ -13,7 +13,7 @@ _RESET = "\033[0m"
 def _paint(code: str, text: str, stream: TextIO) -> str:
     if os.environ.get("NO_COLOR") or not stream.isatty():
         return text
-    
+
     return f"{code}{text}{_RESET}"
 
 
