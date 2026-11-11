@@ -52,7 +52,7 @@ def _build_main_help() -> str:
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = _Parser(prog="gdiff", allow_abbrev=False)
+    parser = _Parser(allow_abbrev=False)
 
     parser.help_text = _build_main_help()
 
