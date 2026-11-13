@@ -10,6 +10,8 @@ from gdiff.errors import GdiffError
 
 RESET_HINT = "Please edit the file or run 'gdiff rule reset' to restore the default rule."
 
+ALLOWED_SUFFIXES = (".txt",)
+
 
 def config_dir() -> Path:
     override = os.environ.get("GDIFF_CONFIG_HOME")
@@ -47,8 +49,12 @@ def resolve_rule(custom: str | None = None) -> Path:
     """--rule file > user rule in the config dir > rule shipped with gdiff."""
     if custom:
         path = Path(custom)
+        if path.suffix.lower() not in ALLOWED_SUFFIXES:
+            raise GdiffError(f"Rule file must have a .txt extension: {custom}")
+
         if not path.is_file():
             raise GdiffError(f"Rule file not found: {custom}")
+
         return path
 
     user_rule = existing_user_rule()
