@@ -11,9 +11,11 @@ DESTS = ("commit", "rule", "print_only", "diff_only")
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("-c", "--commit", nargs="?", const="1", default=None)
-    parser.add_argument("-r", "--rule")
     parser.add_argument("-p", "--print", dest="print_only", action="store_true")
-    parser.add_argument("-d", "--diff-only", dest="diff_only", action="store_true")
+
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("-r", "--rule")  # takes exactly one value: the rule file
+    group.add_argument("-d", "--diff-only", dest="diff_only", action="store_true")
 
 
 def run(args: argparse.Namespace) -> int:
