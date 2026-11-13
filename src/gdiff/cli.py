@@ -40,7 +40,7 @@ def _build_main_help() -> str:
             "",
             ui.bold("FLAGS"),
             "  -c, --commit [REF]    Diff of a commit: position, hash or ref (default: 1 = latest)",
-            "  -r, --rule <file>     Use a custom rule file (.txt or .md)",
+            "  -r, --rule <file>     Use a custom rule file (.txt)",
             "  -p, --print           Print the output instead of copying to clipboard",
             "  -d, --diff-only       Copy only the diff, without the rule",
             "",

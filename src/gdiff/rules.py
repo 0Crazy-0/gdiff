@@ -11,6 +11,7 @@ from gdiff.errors import GdiffError
 RESET_HINT = "Please edit the file or run 'gdiff rule reset' to restore the default rule."
 
 ALLOWED_SUFFIXES = (".txt",)
+RULE_FILENAME = "rule.txt"
 
 
 def config_dir() -> Path:
@@ -28,21 +29,18 @@ def config_dir() -> Path:
 
 
 def user_rule_path() -> Path:
-    return config_dir() / "rule.txt"
+    return config_dir() / RULE_FILENAME
 
 
 def existing_user_rule() -> Path | None:
-    """The user's own rule (rule.txt wins over rule.md), if there is one."""
-    for name in ("rule.txt", "rule.md"):
-        candidate = config_dir() / name
-        if candidate.is_file():
-            return candidate
-    return None
+    """The user's own rule, if there is one."""
+    candidate = config_dir() / RULE_FILENAME
+    return candidate if candidate.is_file() else None
 
 
 def default_rule_path() -> Path:
     # A real file on disk: gdiff is installed as loose files, not as a zipapp
-    return Path(str(resources.files("gdiff") / "data" / "rule.txt"))
+    return Path(str(resources.files("gdiff") / "data" / RULE_FILENAME))
 
 
 def resolve_rule(custom: str | None = None) -> Path:

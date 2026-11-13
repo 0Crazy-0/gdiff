@@ -31,7 +31,7 @@ def build_help() -> str:
             "",
             ui.bold("LOOKUP ORDER"),
             "  1. gdiff -r <file>    (highest)",
-            f"  2. {config / 'rule.txt'} (or rule.md)",
+            f"  2. {config / 'rule.txt'}",
             "  3. built-in default rule",
             "",
             ui.bold("GLOBAL FLAGS"),
