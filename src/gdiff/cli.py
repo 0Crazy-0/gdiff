@@ -102,7 +102,12 @@ def _configure_streams() -> None:
 
 def main(argv: Sequence[str] | None = None) -> int:
     _configure_streams()
-    args = list(sys.argv[1:] if argv is None else argv)
+
+    if argv is None:
+        argv = sys.argv[1:]
+
+    args = list(argv)
+
     try:
         code = _dispatch(args)
         sys.stdout.flush()
