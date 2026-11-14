@@ -17,8 +17,13 @@ package = false
 
 [dependency-groups]
 dev = [
+    "mutmut>=3.8.1",
+    "pytest>=9.2.0",
     "ruff>=0.17.4",
 ]
+
+[tool.mutmut]
+paths_to_mutate = ["src/"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
