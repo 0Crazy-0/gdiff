@@ -7,33 +7,34 @@ import subprocess
 from gdiff.errors import GdiffError
 
 
-def detect() -> list[str] | None:
+def detect() -> tuple[list[str], str] | None:
     if shutil.which("wl-copy") and os.environ.get("WAYLAND_DISPLAY"):
-        return ["wl-copy"]
+        return ["wl-copy"], "utf-8"
     if shutil.which("xclip") and os.environ.get("DISPLAY"):
-        return ["xclip", "-selection", "clipboard"]
+        return ["xclip", "-selection", "clipboard"], "utf-8"
     if shutil.which("xsel") and os.environ.get("DISPLAY"):
-        return ["xsel", "--clipboard", "--input"]
+        return ["xsel", "--clipboard", "--input"], "utf-8"
     if shutil.which("pbcopy"):
-        return ["pbcopy"]
+        return ["pbcopy"], "utf-8"
     if shutil.which("clip.exe"):
-        return ["clip.exe"]
+        return ["clip.exe"], "utf-16le"
     return None
 
 
 def copy(text: str) -> None:
-    command = detect()
-    if command is None:
+    tool = detect()
+    if tool is None:
         raise GdiffError(
             "No clipboard tool found (wl-copy, xclip, xsel, pbcopy, clip.exe).",
             hint="Use --print to output to stdout instead.",
         )
+    command, encoding = tool
     try:
         # stdout must not be captured: wl-copy and xclip fork a child that keeps
         # the pipe open, so waiting for it to close would hang forever.
         result = subprocess.run(
             command,
-            input=text.encode("utf-8"),
+            input=text.encode(encoding),
             stdout=subprocess.DEVNULL,
             check=False,
         )
