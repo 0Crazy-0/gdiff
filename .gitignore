@@ -12,3 +12,4 @@ debian/files
 *.ruff_cache/
 *.egg-info/
 *.vscode/
+mutants/
