@@ -84,10 +84,10 @@ def _dispatch(argv: list[str]) -> int:
     if args.command is None:
         return generate.run(args)
 
-    used = [d for d in generate.DESTS if getattr(args, d) != parser.get_default(d)]
+    conflicting = generate.passed_flags(args, parser)
 
-    if used:
-        parser.error(f"'{args.command}' cannot be combined with -c, -r, -p or -d.")
+    if conflicting:
+        parser.error(f"'{args.command}' cannot be combined with {', '.join(conflicting)}.")
 
     return COMMANDS[args.command].run(args)
 

@@ -6,7 +6,7 @@ import sys
 from gdiff import clipboard, git, rules, ui
 from gdiff.errors import GdiffError
 
-DESTS = ("commit", "rule", "print_only", "diff_only")
+FLAGS = {"commit": "-c", "rule": "-r", "print_only": "-p", "diff_only": "-d"}
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
@@ -38,6 +38,9 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
         default=False,
     )
 
+def passed_flags(args: argparse.Namespace, parser: argparse.ArgumentParser) -> list[str]:
+    """Flags of the default command that the user actually typed."""
+    return [flag for dest, flag in FLAGS.items() if getattr(args, dest) != parser.get_default(dest)]
 
 def run(args: argparse.Namespace) -> int:
     # Same order as the bash version: rule problems are reported before git ones
