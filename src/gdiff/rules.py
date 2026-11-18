@@ -69,7 +69,11 @@ def resolve_rule(custom: str | None = None) -> Path:
 
 
 def check_rule(path: Path) -> None:
-    if path.stat().st_size == 0:
+    try:
+        size = path.stat().st_size
+    except OSError as exc:
+        raise GdiffError(f"Cannot read rule file {path}: {exc}") from None
+    if size == 0:
         raise GdiffError(f"Rule file is empty: {path}", hint=RESET_HINT)
 
 
