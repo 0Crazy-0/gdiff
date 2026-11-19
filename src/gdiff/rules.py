@@ -8,8 +8,6 @@ from pathlib import Path
 
 from gdiff.errors import GdiffError
 
-RESET_HINT = "Please edit the file or run 'gdiff rule reset' to restore the default rule."
-
 ALLOWED_SUFFIXES = (".txt",)
 RULE_FILENAME = "rule.txt"
 
@@ -74,7 +72,10 @@ def check_rule(path: Path) -> None:
     except OSError as exc:
         raise GdiffError(f"Cannot read rule file {path}: {exc}") from None
     if size == 0:
-        raise GdiffError(f"Rule file is empty: {path}", hint=RESET_HINT)
+        raise GdiffError(
+            f"Rule file is empty: {path}",
+            hint="Please edit the file or run 'gdiff rule reset' to restore the default rule.",
+        )
 
 
 def read_rule(path: Path) -> str:
