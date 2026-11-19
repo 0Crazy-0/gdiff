@@ -50,11 +50,11 @@ def resolve_commit(target: str) -> str:
     if code != 0:
         raise GdiffError("No commits found in repository.")
 
-    if re.fullmatch(r"[0-9]{1,6}", target):
+    if re.fullmatch(r"\d{1,6}", target, re.ASCII):
         # Short all-digit values are positions in git log order, counting from
         # HEAD. Every reachable commit counts, including merge commits and the
         # commits of merged branches.
-        if not re.fullmatch(r"[1-9][0-9]*", target):
+        if not re.fullmatch(r"[1-9]\d*", target, re.ASCII):
             raise GdiffError(
                 f"Invalid commit position '{target}'. Must be a positive integer (e.g. 1, 2, 3)."
             )
