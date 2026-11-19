@@ -7,3 +7,9 @@ debian/files
 *.buildinfo
 *.changes
 *.dsc
+*.pyc
+*.venv/
+*.ruff_cache/
+*.egg-info/
+*.vscode/
+mutants/
