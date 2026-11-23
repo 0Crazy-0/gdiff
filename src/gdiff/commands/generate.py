@@ -47,10 +47,13 @@ def passed_flags(args: argparse.Namespace, parser: argparse.ArgumentParser) -> l
 def run(args: argparse.Namespace) -> int:
     # Same order as the bash version: rule problems are reported before git ones
     rule_text = ""
+    using_default = False
+
     if not args.diff_only:
         rule_path = rules.resolve_rule(args.rule)
         rules.check_rule(rule_path)
         rule_text = rules.read_rule(rule_path)
+        using_default = rule_path == rules.default_rule_path()
 
     git.ensure_repo()
     if args.commit is None:
@@ -71,5 +74,13 @@ def run(args: argparse.Namespace) -> int:
         return 0
 
     clipboard.copy(payload)
-    ui.success("Diff copied to clipboard" if args.diff_only else "Diff + rule copied to clipboard")
+    ui.success(_success_message(args.diff_only, using_default))
     return 0
+
+
+def _success_message(diff_only: bool, using_default: bool) -> str:
+    if diff_only:
+        return "Diff copied to clipboard"
+    if using_default:
+        return "Diff + default rule copied to clipboard"
+    return "Diff + rule copied to clipboard"
