@@ -14,3 +14,4 @@ debian/files
 *.vscode/
 mutants/
 build/
+tests/coverage/

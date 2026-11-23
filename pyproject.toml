@@ -19,8 +19,21 @@ gdiff = ["data/rule.txt"]
 dev = [
     "mutmut>=3.8.1",
     "pytest>=9.2.0",
+    "pytest-cov>=7.1.0",
     "ruff>=0.17.4",
 ]
+
+[tool.coverage.run]
+source = ["src"]
+relative_files = true
+branch = true
+data_file = "tests/coverage/.coverage"
+
+[tool.coverage.xml]
+output = "tests/coverage/coverage.xml"
+
+[tool.coverage.html]
+directory = "tests/coverage/html"
 
 [tool.mutmut]
 paths_to_mutate = ["src/"]
