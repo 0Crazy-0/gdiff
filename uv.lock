@@ -301,7 +301,7 @@ wheels = [
 ]
 
 [[package]]
-name = "gdiff"
+name = "gdif-cli"
 version = "2.0.0"
 source = { virtual = "." }
 
