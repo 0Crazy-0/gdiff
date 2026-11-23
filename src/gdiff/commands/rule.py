@@ -55,7 +55,11 @@ def run_init() -> None:
     if existing:
         print(f"A rule file already exists at {existing} (left untouched).")
         return
-    target = rules.write_user_rule()
+    try:
+        target = rules.write_user_rule(overwrite=False)
+    except FileExistsError:
+        print(f"A rule file already exists at {rules.user_rule_path()} (left untouched).")
+        return
     ui.success(f"Created an editable rule at {target}")
 
 

@@ -86,10 +86,11 @@ def read_rule(path: Path) -> str:
         raise GdiffError(f"Cannot read rule file {path}: {exc}") from None
 
 
-def write_user_rule() -> Path:
-    """Copy the built-in rule to the config dir, replacing whatever is there.
+def write_user_rule(*, overwrite: bool = True) -> Path:
+    """Copy the built-in rule to the config dir.
 
-    Deciding whether that is acceptable (prompting, refusing) is the caller's job.
+    With overwrite=False the target is created exclusively and
+    FileExistsError is raised if it already exists.
     """
     source = default_rule_path()
     if not source.is_file():
@@ -97,7 +98,13 @@ def write_user_rule() -> Path:
     target = user_rule_path()
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(source, target)
+        if overwrite:
+            shutil.copyfile(source, target)
+        else:
+            with source.open("rb") as src, target.open("xb") as dst:
+                shutil.copyfileobj(src, dst)
+    except FileExistsError:
+        raise
     except OSError as exc:
         raise GdiffError(f"Cannot write {target}: {exc}") from None
     return target
