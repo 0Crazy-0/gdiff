@@ -68,13 +68,6 @@ def run_reset() -> None:
     ui.success(f"Reset the rule to the built-in default at {target}")
 
 
-_ACTIONS: dict[str, Callable[[], None]] = {
-    "path": run_path,
-    "init": run_init,
-    "reset": run_reset,
-}
-
-
 def run(args: argparse.Namespace) -> int:
     names = list(_ACTIONS)
     valid = f"{', '.join(names[:-1])} or {names[-1]}"
@@ -85,3 +78,10 @@ def run(args: argparse.Namespace) -> int:
         raise GdiffError(f"Unknown rule action: '{args.action}'. Valid actions: {valid}.")
     handler()
     return 0
+
+
+_ACTIONS: dict[str, Callable[[], None]] = {
+    "path": run_path,
+    "init": run_init,
+    "reset": run_reset,
+}

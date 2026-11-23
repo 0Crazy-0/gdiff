@@ -10,13 +10,6 @@ _BOLD = "\033[1m"
 _RESET = "\033[0m"
 
 
-def _paint(code: str, text: str, stream: TextIO) -> str:
-    if os.environ.get("NO_COLOR") or not stream.isatty():
-        return text
-
-    return f"{code}{text}{_RESET}"
-
-
 def red(text: str, stream: TextIO | None = None) -> str:
     return _paint(_RED, text, stream or sys.stderr)
 
@@ -45,3 +38,10 @@ def confirm(message: str) -> bool:
     sys.stdout.flush()
     answer = sys.stdin.readline().strip().lower()
     return answer in ("y", "yes")
+
+
+def _paint(code: str, text: str, stream: TextIO) -> str:
+    if os.environ.get("NO_COLOR") or not stream.isatty():
+        return text
+
+    return f"{code}{text}{_RESET}"

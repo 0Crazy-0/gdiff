@@ -12,6 +12,29 @@ from gdiff.errors import GdiffError
 COMMANDS = {"message": message, "rule": rule}
 
 
+def main(argv: Sequence[str] | None = None) -> int:
+    _configure_streams()
+
+    if argv is None:
+        argv = sys.argv[1:]
+
+    args = list(argv)
+
+    try:
+        code = _dispatch(args)
+        sys.stdout.flush()
+        return code
+    except GdiffError as err:
+        ui.error(err.label, str(err), err.hint)
+        return err.exit_code
+    except KeyboardInterrupt:
+        return 130
+    except BrokenPipeError:
+        # e.g. `gdiff -p | head`: silence the second error Python raises at exit
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        return 1
+
+
 class _Parser(argparse.ArgumentParser):
     """argparse that raises GdiffError and prints gdiff's own help."""
 
@@ -98,26 +121,3 @@ def _configure_streams() -> None:
         reconfigure = getattr(stream, "reconfigure", None)
         if reconfigure:
             reconfigure(encoding="utf-8", errors="replace")
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    _configure_streams()
-
-    if argv is None:
-        argv = sys.argv[1:]
-
-    args = list(argv)
-
-    try:
-        code = _dispatch(args)
-        sys.stdout.flush()
-        return code
-    except GdiffError as err:
-        ui.error(err.label, str(err), err.hint)
-        return err.exit_code
-    except KeyboardInterrupt:
-        return 130
-    except BrokenPipeError:
-        # e.g. `gdiff -p | head`: silence the second error Python raises at exit
-        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
-        return 1

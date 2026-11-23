@@ -4,26 +4,6 @@ import subprocess
 from gdiff.errors import GdiffError
 
 
-def _run(*args: str) -> tuple[int, str]:
-    """Run git and return (exit code, stdout).
-
-    Output is decoded by hand instead of using text=True, because text mode
-    would turn CRLF into LF and silently alter diffs of Windows files.
-    """
-    try:
-        result = subprocess.run(["git", *args], capture_output=True, check=False)
-    except FileNotFoundError:
-        raise GdiffError("git is not installed.") from None
-    return result.returncode, result.stdout.decode("utf-8", errors="replace")
-
-
-def _run_checked(*args: str) -> str:
-    code, out = _run(*args)
-    if code != 0:
-        raise GdiffError(f"git {args[0]} failed.")
-    return out
-
-
 def ensure_repo() -> None:
     code, _ = _run("rev-parse", "--git-dir")
     if code != 0:
@@ -47,6 +27,47 @@ def resolve_commit(target: str) -> str:
     if re.fullmatch(r"\d{1,6}", target, re.ASCII):
         return _resolve_position(target)
     return _resolve_ref(target)
+
+
+def commit_diff(commit_hash: str) -> str:
+    stat = _run_checked("show", "-m", "--first-parent", "--stat", "--format=", commit_hash)
+    patch = _run_checked("show", "-m", "--first-parent", "-p", "--format=", commit_hash)
+    return f"{stat}\n{patch}"
+
+
+def commit_message(commit_hash: str, with_info: bool = False) -> str:
+    """The message exactly as written; with_info adds hash, author and date first."""
+    message = _run_checked("log", "-1", "--format=%B", commit_hash).rstrip("\n")
+    if not with_info:
+        return f"{message}\n"
+    header = _run_checked(
+        "log",
+        "-1",
+        "--date=default",
+        "--format=Commit: %H%nShort:  %h%nAuthor: %an <%ae>%nDate:   %ad",
+        commit_hash,
+    ).rstrip("\n")
+    return f"{header}\n\n{message}\n"
+
+
+def _run(*args: str) -> tuple[int, str]:
+    """Run git and return (exit code, stdout).
+
+    Output is decoded by hand instead of using text=True, because text mode
+    would turn CRLF into LF and silently alter diffs of Windows files.
+    """
+    try:
+        result = subprocess.run(["git", *args], capture_output=True, check=False)
+    except FileNotFoundError:
+        raise GdiffError("git is not installed.") from None
+    return result.returncode, result.stdout.decode("utf-8", errors="replace")
+
+
+def _run_checked(*args: str) -> str:
+    code, out = _run(*args)
+    if code != 0:
+        raise GdiffError(f"git {args[0]} failed.")
+    return out
 
 
 def _resolve_position(target: str) -> str:
@@ -92,24 +113,3 @@ def _resolve_ref(target: str) -> str:
     if code != 0 or not commit_hash:
         raise GdiffError(f"Commit '{target}' not found.")
     return commit_hash
-
-
-def commit_diff(commit_hash: str) -> str:
-    stat = _run_checked("show", "-m", "--first-parent", "--stat", "--format=", commit_hash)
-    patch = _run_checked("show", "-m", "--first-parent", "-p", "--format=", commit_hash)
-    return f"{stat}\n{patch}"
-
-
-def commit_message(commit_hash: str, with_info: bool = False) -> str:
-    """The message exactly as written; with_info adds hash, author and date first."""
-    message = _run_checked("log", "-1", "--format=%B", commit_hash).rstrip("\n")
-    if not with_info:
-        return f"{message}\n"
-    header = _run_checked(
-        "log",
-        "-1",
-        "--date=default",
-        "--format=Commit: %H%nShort:  %h%nAuthor: %an <%ae>%nDate:   %ad",
-        commit_hash,
-    ).rstrip("\n")
-    return f"{header}\n\n{message}\n"
