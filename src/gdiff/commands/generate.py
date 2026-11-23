@@ -82,5 +82,5 @@ def _success_message(diff_only: bool, using_default: bool) -> str:
     if diff_only:
         return "Diff copied to clipboard"
     if using_default:
-        return "Diff + default rule copied to clipboard"
-    return "Diff + rule copied to clipboard"
+        return "Diff with default rule copied to clipboard"
+    return "Diff with rule copied to clipboard"
