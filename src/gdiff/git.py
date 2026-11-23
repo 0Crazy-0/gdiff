@@ -44,10 +44,6 @@ def staged_diff() -> str:
 
 def resolve_commit(target: str) -> str:
     """Turn a position (1 = latest), hash or ref into a full commit hash."""
-    code, _ = _run("rev-parse", "--verify", "HEAD")
-    if code != 0:
-        raise GdiffError("No commits found in repository.")
-
     if re.fullmatch(r"\d{1,6}", target, re.ASCII):
         # Short all-digit values are positions in git log order, counting from
         # HEAD. Every reachable commit counts, including merge commits and the
@@ -57,6 +53,10 @@ def resolve_commit(target: str) -> str:
                 f"Invalid commit position '{target}'. Must be a positive integer (e.g. 1, 2, 3)."
             )
         position = int(target)
+
+        code, _ = _run("rev-parse", "--verify", "HEAD")
+        if code != 0:
+            raise GdiffError("No commits found in repository.")
 
         total = int(_run_checked("rev-list", "--count", "HEAD").strip())
         if position > total:
