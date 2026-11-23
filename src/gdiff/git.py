@@ -45,35 +45,43 @@ def staged_diff() -> str:
 def resolve_commit(target: str) -> str:
     """Turn a position (1 = latest), hash or ref into a full commit hash."""
     if re.fullmatch(r"\d{1,6}", target, re.ASCII):
-        # Short all-digit values are positions in git log order, counting from
-        # HEAD. Every reachable commit counts, including merge commits and the
-        # commits of merged branches.
-        if not re.fullmatch(r"[1-9]\d*", target, re.ASCII):
-            raise GdiffError(
-                f"Invalid commit position '{target}'. Must be a positive integer (e.g. 1, 2, 3)."
-            )
-        position = int(target)
+        return _resolve_position(target)
+    return _resolve_ref(target)
 
-        code, _ = _run("rev-parse", "--verify", "HEAD")
-        if code != 0:
-            raise GdiffError("No commits found in repository.")
 
-        total = int(_run_checked("rev-list", "--count", "HEAD").strip())
-        if position > total:
-            noun = "commit" if total == 1 else "commits"
-            raise GdiffError(
-                f"Commit at position {position} does not exist (branch only has {total} {noun})."
-            )
-        commit_hash = _run_checked(
-            "rev-list", f"--skip={position - 1}", "--max-count=1", "HEAD"
-        ).strip()
+def _resolve_position(target: str) -> str:
+    """Resolve a short all-digit value as a position in git log order.
 
-        if not commit_hash:
-            raise GdiffError(f"Failed to resolve commit at position {target}.")
+    Counts from HEAD. Every reachable commit counts, including merge commits
+    and the commits of merged branches.
+    """
+    if not re.fullmatch(r"[1-9]\d*", target, re.ASCII):
+        raise GdiffError(
+            f"Invalid commit position '{target}'. Must be a positive integer (e.g. 1, 2, 3)."
+        )
+    position = int(target)
 
-        return commit_hash
+    code, _ = _run("rev-parse", "--verify", "HEAD")
+    if code != 0:
+        raise GdiffError("No commits found in repository.")
 
-    # Anything else is treated as a hash or ref
+    total = int(_run_checked("rev-list", "--count", "HEAD").strip())
+    if position > total:
+        noun = "commit" if total == 1 else "commits"
+        raise GdiffError(
+            f"Commit at position {position} does not exist (branch only has {total} {noun})."
+        )
+
+    commit_hash = _run_checked(
+        "rev-list", f"--skip={position - 1}", "--max-count=1", "HEAD"
+    ).strip()
+    if not commit_hash:
+        raise GdiffError(f"Failed to resolve commit at position {target}.")
+    return commit_hash
+
+
+def _resolve_ref(target: str) -> str:
+    """Resolve anything that is not a position as a hash or ref."""
     if not target or target.startswith("-"):
         raise GdiffError(
             f"Invalid commit '{target}'. Use a position (e.g. 1, 2, 3) or a commit hash."
