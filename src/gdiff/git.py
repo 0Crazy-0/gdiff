@@ -37,12 +37,19 @@ def commit_diff(commit_hash: str) -> str:
 
 def commit_message(commit_hash: str, with_info: bool = False) -> str:
     """The message exactly as written; with_info adds hash, author and date first."""
-    message = _run_checked("log", "-1", "--format=%B", commit_hash).rstrip("\n")
+    message = _run_checked(
+        "log",
+        "-1",
+        "--encoding=UTF-8",
+        "--format=%B",
+        commit_hash,
+    ).rstrip("\n")
     if not with_info:
         return f"{message}\n"
     header = _run_checked(
         "log",
         "-1",
+        "--encoding=UTF-8",
         "--date=default",
         "--format=Commit: %H%nShort:  %h%nAuthor: %an <%ae>%nDate:   %ad",
         commit_hash,
