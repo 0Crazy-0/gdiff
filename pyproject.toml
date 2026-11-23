@@ -1,9 +1,12 @@
 [project]
-name = "gdiff"
+name = "gdif-cli"
 version = "2.0.0"
 description = "Copy your git diff plus a commit-message rule to the clipboard"
 requires-python = ">=3.10"
 dependencies = []
+
+[project.scripts]
+gdiff = "gdiff.cli:main"
 
 [build-system]
 requires = ["setuptools>=61"]
