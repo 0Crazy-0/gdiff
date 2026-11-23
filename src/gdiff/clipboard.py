@@ -15,7 +15,7 @@ def detect() -> tuple[list[str], str] | None:
     if shutil.which("xsel") and os.environ.get("DISPLAY"):
         return ["xsel", "--clipboard", "--input"], "utf-8"
     if shutil.which("pbcopy"):
-        return ["pbcopy"], "utf-8"
+        return ["env", "LC_ALL=en_US.UTF-8", "pbcopy"], "utf-8"
     if shutil.which("clip.exe"):
         return ["clip.exe"], "utf-16le"
     return None
