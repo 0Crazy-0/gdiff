@@ -301,9 +301,9 @@ wheels = [
 ]
 
 [[package]]
-name = "gdif-cli"
+name = "gdiff-cli"
 version = "2.0.0"
-source = { virtual = "." }
+source = { editable = "." }
 
 [package.dev-dependencies]
 dev = [
