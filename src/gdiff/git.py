@@ -39,7 +39,7 @@ def has_staged() -> bool:
 
 
 def staged_diff() -> str:
-    return _run_checked("diff", "--cached", "--stat", "--patch")
+    return _run_checked("diff", "--cached", "--no-color", "--stat", "--patch")
 
 
 def resolve_commit(target: str) -> str:
