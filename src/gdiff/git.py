@@ -57,18 +57,20 @@ def resolve_commit(target: str) -> str:
                 f"Invalid commit position '{target}'. Must be a positive integer (e.g. 1, 2, 3)."
             )
         position = int(target)
-        
+
         total = int(_run_checked("rev-list", "--count", "HEAD").strip())
         if position > total:
             noun = "commit" if total == 1 else "commits"
             raise GdiffError(
                 f"Commit at position {position} does not exist (branch only has {total} {noun})."
             )
-        commit_hash = _run_checked("rev-list", f"--skip={position - 1}", "--max-count=1", "HEAD").strip()
-        
+        commit_hash = _run_checked(
+            "rev-list", f"--skip={position - 1}", "--max-count=1", "HEAD"
+        ).strip()
+
         if not commit_hash:
             raise GdiffError(f"Failed to resolve commit at position {target}.")
-        
+
         return commit_hash
 
     # Anything else is treated as a hash or ref
@@ -76,7 +78,7 @@ def resolve_commit(target: str) -> str:
         raise GdiffError(
             f"Invalid commit '{target}'. Use a position (e.g. 1, 2, 3) or a commit hash."
         )
-    
+
     code, out = _run("rev-parse", "--verify", "--quiet", f"{target}^{{commit}}")
     commit_hash = out.strip()
     if code != 0 or not commit_hash:
