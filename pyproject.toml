@@ -1,5 +1,5 @@
 [project]
-name = "gdif-cli"
+name = "gdiff-cli"
 version = "2.0.0"
 description = "Copy your git diff plus a commit-message rule to the clipboard"
 requires-python = ">=3.10"
@@ -14,9 +14,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.package-data]
 gdiff = ["data/rule.txt"]
-
-[tool.uv]
-package = false
 
 [dependency-groups]
 dev = [
