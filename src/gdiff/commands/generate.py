@@ -63,6 +63,10 @@ def run(args: argparse.Namespace) -> int:
     payload = f"{diff}\n\n{rule_text}"
 
     if args.print_only:
+        # Keep the diff's existing CRLF/LF endings instead of translating them on Windows
+        reconfigure = getattr(sys.stdout, "reconfigure", None)
+        if reconfigure:
+            reconfigure(newline="")
         sys.stdout.write(payload)
         return 0
 
