@@ -41,17 +41,16 @@ def default_rule_path() -> Path:
     return Path(str(resources.files("gdiff") / "data" / RULE_FILENAME))
 
 
-def resolve_rule(custom: str | None = None) -> Path:
+def resolve_rule(custom: Path | None = None) -> Path:
     """--rule file > user rule in the config dir > rule shipped with gdiff."""
-    if custom:
-        path = Path(custom)
-        if path.suffix.lower() not in ALLOWED_SUFFIXES:
+    if custom is not None:
+        if custom.suffix.lower() not in ALLOWED_SUFFIXES:
             raise GdiffError(f"Rule file must have a .txt extension: {custom}")
 
-        if not path.is_file():
+        if not custom.is_file():
             raise GdiffError(f"Rule file not found: {custom}")
 
-        return path
+        return custom
 
     user_rule = existing_user_rule()
     if user_rule:

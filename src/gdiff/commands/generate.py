@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+from pathlib import Path
 
 from gdiff import clipboard, git, rules, ui
 from gdiff.errors import GdiffError
@@ -27,6 +28,7 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
         "--rule",
         dest="rule",
         action="store",  # takes exactly one value: the rule file
+        type=Path,
         nargs=None,
         default=None,
     )
