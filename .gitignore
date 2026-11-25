@@ -15,3 +15,4 @@ debian/files
 mutants/
 build/
 tests/coverage/
+*.cache/
