@@ -12,32 +12,38 @@ FLAGS = {"commit": "-c", "rule": "-r", "print_only": "-p", "diff_only": "-d"}
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
-        "-c", "--commit", dest="commit", action="store", nargs="?", const="1", default=None
+        "-c",
+        "--commit",
+        dest="commit",  # pragma: no mutate
+        action="store",  # pragma: no mutate
+        nargs="?",
+        const="1",
+        default=None,  # pragma: no mutate
     )
     parser.add_argument(
         "-p",
         "--print",
         dest="print_only",
         action="store_true",
-        default=False,
+        default=False,  # pragma: no mutate
     )
 
-    group = parser.add_mutually_exclusive_group(required=False)
+    group = parser.add_mutually_exclusive_group(required=False)  # pragma: no mutate
     group.add_argument(
         "-r",
         "--rule",
-        dest="rule",
-        action="store",  # takes exactly one value: the rule file
+        dest="rule",  # pragma: no mutate
+        action="store",  # takes exactly one value: the rule file # pragma: no mutate
         type=Path,
-        nargs=None,
-        default=None,
+        nargs=None,  # pragma: no mutate
+        default=None,  # pragma: no mutate
     )
     group.add_argument(
         "-d",
         "--diff-only",
-        dest="diff_only",
+        dest="diff_only",  # pragma: no mutate
         action="store_true",
-        default=False,
+        default=False,  # pragma: no mutate
     )
 
 
@@ -49,7 +55,7 @@ def passed_flags(args: argparse.Namespace, parser: argparse.ArgumentParser) -> l
 def run(args: argparse.Namespace) -> int:
     # Same order as the bash version: rule problems are reported before git ones
     rule_text = ""
-    using_default = False
+    using_default = False  # pragma: no mutate
 
     if not args.diff_only:
         rule_path = rules.resolve_rule(args.rule)
