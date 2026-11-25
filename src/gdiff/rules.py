@@ -95,15 +95,29 @@ def write_user_rule(*, overwrite: bool = True) -> Path:
     if not source.is_file():
         raise GdiffError(f"Built-in rule file is missing: {source}")
     target = user_rule_path()
+
+    # Directory problems are always a GdiffError, never FileExistsError
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
-        if overwrite:
-            shutil.copyfile(source, target)
-        else:
-            with source.open("rb") as src, target.open("xb") as dst:
-                shutil.copyfileobj(src, dst)
-    except FileExistsError:
-        raise
     except OSError as exc:
+        raise GdiffError(f"Cannot write {target}: {exc}") from None
+
+    if overwrite:
+        try:
+            shutil.copyfile(source, target)
+        except OSError as exc:
+            raise GdiffError(f"Cannot write {target}: {exc}") from None
+        return target
+
+    created = False
+    try:
+        with source.open("rb") as src, target.open("xb") as dst:
+            created = True
+            shutil.copyfileobj(src, dst)
+    except OSError as exc:
+        if created:
+            target.unlink(missing_ok=True)
+        elif isinstance(exc, FileExistsError):
+            raise  # "xb" rejected an existing target: the caller decides
         raise GdiffError(f"Cannot write {target}: {exc}") from None
     return target
