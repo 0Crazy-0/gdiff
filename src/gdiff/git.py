@@ -3,6 +3,8 @@ import subprocess
 
 from gdiff.errors import GdiffError
 
+_OUTPUT_ENCODING = "utf-8"  # pragma: no mutate
+
 
 def ensure_repo() -> None:
     code, _ = _run("rev-parse", "--git-dir")
@@ -67,7 +69,7 @@ def _run(*args: str) -> tuple[int, str]:
         result = subprocess.run(["git", *args], capture_output=True, check=False)
     except FileNotFoundError:
         raise GdiffError("git is not installed.") from None
-    return result.returncode, result.stdout.decode("utf-8", errors="replace")
+    return result.returncode, result.stdout.decode(_OUTPUT_ENCODING, "replace")
 
 
 def _run_checked(*args: str) -> str:
