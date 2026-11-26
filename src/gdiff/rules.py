@@ -116,7 +116,13 @@ def write_user_rule(*, overwrite: bool = True) -> Path:
             shutil.copyfileobj(src, dst)
     except OSError as exc:
         if created:
-            target.unlink(missing_ok=True)
+            try:
+                target.unlink(missing_ok=True)
+            except OSError as cleanup_exc:
+                raise GdiffError(
+                    f"Cannot write {target}: {exc}. "
+                    f"Also failed to remove the partial file: {cleanup_exc}"
+                ) from None
         elif isinstance(exc, FileExistsError):
             raise  # "xb" rejected an existing target: the caller decides
         raise GdiffError(f"Cannot write {target}: {exc}") from None
