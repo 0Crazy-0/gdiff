@@ -37,5 +37,9 @@ def build_help() -> str:
 def run(args: argparse.Namespace) -> int:
     git.ensure_repo()
     commit_hash = git.resolve_commit(args.ref)
+    # Keep the message's existing CRLF/LF endings instead of translating them on Windows
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if reconfigure:
+        reconfigure(newline="")
     sys.stdout.write(git.commit_message(commit_hash, args.info))
     return 0
