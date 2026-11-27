@@ -308,5 +308,5 @@ def _args(**overrides: object) -> argparse.Namespace:
 
 def _write_rule(tmp_path: Path, text: str) -> Path:
     path = tmp_path / "rule.txt"
-    path.write_text(text, encoding="utf-8")
+    path.write_text(text, encoding="utf-8", newline="")
     return path
