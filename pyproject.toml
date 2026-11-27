@@ -1,0 +1,49 @@
+[project]
+name = "gdiff-cli"
+version = "2.0.0"
+description = "Copy your git diff plus a commit-message rule to the clipboard"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+gdiff = "gdiff.cli:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.package-data]
+gdiff = ["data/rule.txt"]
+
+[dependency-groups]
+dev = [
+    "mutmut>=3.8.1",
+    "pytest>=9.2.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.4",
+]
+
+[tool.coverage.run]
+source = ["src"]
+relative_files = true
+branch = true
+data_file = "tests/coverage/.coverage"
+
+[tool.coverage.xml]
+output = "tests/coverage/coverage.xml"
+
+[tool.coverage.html]
+directory = "tests/coverage/html"
+
+[tool.mutmut]
+paths_to_mutate = ["src/"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+cache_dir = ".cache/pytest"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+cache-dir = ".cache/ruff"
